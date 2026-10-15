@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Production / Release: Enforce secure HTTPS connections for all remote traffic -->
-    <base-config cleartextTrafficPermitted="false" />
+    <!-- Allow HTTP cleartext traffic for local development testing (USB reverse, localhost, LAN) -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
 </network-security-config>

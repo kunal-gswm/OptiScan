@@ -99,15 +99,10 @@ object NetworkConfig {
         }
 
     /**
-     * Returns true if the backend is properly configured for the active build variant.
-     * In Debug: any valid URL (local HTTP or hosted HTTPS) is permitted for testing.
-     * In Release: strictly requires a valid hosted HTTPS backend URL (no silent localhost or blank).
+     * Returns true if the backend is properly configured with a valid URL.
+     * Allows any valid HTTP or HTTPS URL (local dev or hosted).
      */
     fun isConfigured(): Boolean {
-        return if (isDebug) {
-            isValidUrl(activeBaseUrl)
-        } else {
-            isValidHostedUrl(activeBaseUrl)
-        }
+        return isValidUrl(activeBaseUrl)
     }
 }

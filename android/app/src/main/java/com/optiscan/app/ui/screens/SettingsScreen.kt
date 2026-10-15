@@ -296,12 +296,7 @@ fun SettingsScreen(
             var connectionStatus by remember { mutableStateOf<Boolean?>(null) }
             var isTestingConnection by remember { mutableStateOf(false) }
 
-            val isDebugVariant = NetworkConfig.isDebug
-            val isConfiguredStatus = if (isDebugVariant) {
-                NetworkConfig.isValidUrl(enteredUrl)
-            } else {
-                NetworkConfig.isValidHostedUrl(enteredUrl)
-            }
+            val isConfiguredStatus = NetworkConfig.isValidUrl(enteredUrl)
 
             Column(
                 modifier = Modifier
@@ -323,14 +318,16 @@ fun SettingsScreen(
                     )
 
                     // Environment status badge
-                    val badgeText = if (isDebugVariant) {
+                    val badgeText = if (NetworkConfig.isLocalAddress(enteredUrl)) {
                         strings.localDevModeBadge
-                    } else if (isConfiguredStatus) {
+                    } else if (NetworkConfig.isValidHostedUrl(enteredUrl)) {
                         "Hosted Backend"
+                    } else if (isConfiguredStatus) {
+                        "Custom Backend"
                     } else {
                         strings.noHostedBackendConfiguredStatus
                     }
-                    val badgeColor = if (isConfiguredStatus || isDebugVariant) ActionSecondaryGreen else MaterialTheme.colorScheme.error
+                    val badgeColor = if (isConfiguredStatus) ActionSecondaryGreen else MaterialTheme.colorScheme.error
 
                     Text(
                         text = badgeText,
@@ -345,7 +342,7 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = if (!isDebugVariant && !isConfiguredStatus) {
+                    text = if (!isConfiguredStatus) {
                         strings.noHostedBackendConfiguredExplanation
                     } else {
                         strings.serverConfigSubtitle
@@ -354,40 +351,38 @@ fun SettingsScreen(
                     color = TextLightGrey
                 )
 
-                if (isDebugVariant) {
-                    Spacer(modifier = Modifier.height(10.dp))
-                    Text(
-                        text = "Local Dev Presets:",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = ActionPrimaryBlue
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "Local Dev Presets:",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = ActionPrimaryBlue
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    OptiScanButton(
+                        text = "Emulator",
+                        onClick = { enteredUrl = NetworkConfig.EMULATOR_BASE_URL },
+                        variant = ButtonVariant.SURFACE,
+                        minHeight = 40,
+                        modifier = Modifier.weight(1f)
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        OptiScanButton(
-                            text = "Emulator",
-                            onClick = { enteredUrl = NetworkConfig.EMULATOR_BASE_URL },
-                            variant = ButtonVariant.SURFACE,
-                            minHeight = 40,
-                            modifier = Modifier.weight(1f)
-                        )
-                        OptiScanButton(
-                            text = "USB Reverse",
-                            onClick = { enteredUrl = NetworkConfig.PHYSICAL_DEVICE_REVERSE_URL },
-                            variant = ButtonVariant.SURFACE,
-                            minHeight = 40,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "For USB testing, run: adb reverse tcp:8000 tcp:8000\nFor Wi-Fi LAN testing, enter http://<computer-lan-ip>:8000/",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextLightGrey
+                    OptiScanButton(
+                        text = "USB Reverse",
+                        onClick = { enteredUrl = NetworkConfig.PHYSICAL_DEVICE_REVERSE_URL },
+                        variant = ButtonVariant.SURFACE,
+                        minHeight = 40,
+                        modifier = Modifier.weight(1f)
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "For USB testing, run: adb reverse tcp:8000 tcp:8000\nFor Wi-Fi LAN testing, enter http://<computer-lan-ip>:8000/",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextLightGrey
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -397,7 +392,7 @@ fun SettingsScreen(
                     label = { Text(strings.serverUrlLabel, color = TextLightGrey) },
                     placeholder = {
                         Text(
-                            if (isDebugVariant) "http://10.0.2.2:8000/" else "https://api.yourdomain.com/",
+                            "http://127.0.0.1:8000/ or https://...",
                             color = TextLightGrey
                         )
                     },
@@ -416,12 +411,12 @@ fun SettingsScreen(
                         }
                 )
 
-                if (!isDebugVariant && enteredUrl.isNotBlank() && !NetworkConfig.isValidHostedUrl(enteredUrl)) {
+                if (enteredUrl.isNotBlank() && NetworkConfig.isLocalAddress(enteredUrl)) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Release builds require an HTTPS hosted URL (not localhost or loopback).",
+                        text = "Local Dev Mode: Connect phone via USB (adb reverse tcp:8000 tcp:8000) or Wi-Fi LAN IP.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = ActionPrimaryBlue
                     )
                 }
 
