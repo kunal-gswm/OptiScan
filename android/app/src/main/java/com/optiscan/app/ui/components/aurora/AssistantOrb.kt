@@ -108,9 +108,9 @@ fun AssistantOrb(
     // Smooth transition for target scale depending on state and amplitude
     val targetScale = when (state) {
         AssistantState.STOPPED -> 0.90f
-        AssistantState.IDLE -> breathingPulse
+        AssistantState.IDLE, AssistantState.WAITING_FOR_USER -> breathingPulse
         AssistantState.LISTENING -> 1.0f + (amplitude.coerceIn(0f, 1f) * 0.28f)
-        AssistantState.PROCESSING -> 1.02f
+        AssistantState.PROCESSING, AssistantState.COMMAND_PROCESSING -> 1.02f
         AssistantState.SPEAKING -> waveOscillation
         AssistantState.SUCCESS -> 1.14f
         AssistantState.ERROR -> 0.98f
@@ -127,10 +127,10 @@ fun AssistantOrb(
             AssistantState.ERROR -> AuroraError
             AssistantState.SUCCESS -> AuroraTeal
             AssistantState.LISTENING -> AuroraCyan
-            AssistantState.PROCESSING -> AuroraIndigo
+            AssistantState.PROCESSING, AssistantState.COMMAND_PROCESSING -> AuroraIndigo
             AssistantState.SPEAKING -> AuroraBlue
             AssistantState.STOPPED -> AuroraViolet.copy(alpha = 0.5f)
-            AssistantState.IDLE -> AuroraCyan
+            AssistantState.IDLE, AssistantState.WAITING_FOR_USER -> AuroraCyan
         },
         animationSpec = tween(durationMillis = 400),
         label = "coreColor"
@@ -142,10 +142,10 @@ fun AssistantOrb(
             AssistantState.ERROR -> AuroraAmber
             AssistantState.SUCCESS -> AuroraCyan
             AssistantState.LISTENING -> AuroraBlue
-            AssistantState.PROCESSING -> AuroraViolet
+            AssistantState.PROCESSING, AssistantState.COMMAND_PROCESSING -> AuroraViolet
             AssistantState.SPEAKING -> AuroraViolet
             AssistantState.STOPPED -> Color.DarkGray
-            AssistantState.IDLE -> AuroraViolet
+            AssistantState.IDLE, AssistantState.WAITING_FOR_USER -> AuroraViolet
         },
         animationSpec = tween(durationMillis = 400),
         label = "secondaryColor"
@@ -155,6 +155,8 @@ fun AssistantOrb(
         AssistantState.IDLE -> "OptiScan Voice Assistant. Ready. Double tap to activate voice."
         AssistantState.LISTENING -> "Listening for your voice. Speak now."
         AssistantState.PROCESSING -> "Analyzing visual information..."
+        AssistantState.COMMAND_PROCESSING -> "Processing voice command..."
+        AssistantState.WAITING_FOR_USER -> "Waiting for voice command."
         AssistantState.SPEAKING -> "Speaking aloud. Tap to pause or stop."
         AssistantState.SUCCESS -> "Task completed successfully."
         AssistantState.ERROR -> "Voice assistant encountered an issue."
@@ -251,7 +253,7 @@ fun AssistantOrb(
                     )
                 }
 
-                AssistantState.PROCESSING -> {
+                AssistantState.PROCESSING, AssistantState.COMMAND_PROCESSING -> {
                     // Twin luminous orbital arcs rotating around perimeter
                     drawArc(
                         brush = Brush.sweepGradient(
@@ -318,7 +320,7 @@ fun AssistantOrb(
                     )
                 }
 
-                AssistantState.IDLE, AssistantState.STOPPED -> {
+                AssistantState.IDLE, AssistantState.WAITING_FOR_USER, AssistantState.STOPPED -> {
                     // Crisp inner specular highlight
                     drawCircle(
                         color = Color.White.copy(alpha = 0.25f),

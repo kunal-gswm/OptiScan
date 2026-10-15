@@ -10,13 +10,17 @@ import java.util.Locale
 /**
  * Text-to-Speech manager providing accessible spoken feedback to visually impaired users.
  */
-class TtsManager(
+open class TtsManager(
     context: Context,
     private val onInitComplete: ((Boolean) -> Unit)? = null
 ) : TextToSpeech.OnInitListener {
 
     private val tag = "TtsManager"
-    private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
+    private var tts: TextToSpeech? = try {
+        TextToSpeech(context.applicationContext, this)
+    } catch (_: Exception) {
+        null
+    }
 
     var isReady: Boolean = false
         internal set
@@ -34,6 +38,7 @@ class TtsManager(
     var onLanguageFallback: ((AppLanguage) -> Unit)? = null
 
     var onSpeechStateChanged: ((isSpeaking: Boolean) -> Unit)? = null
+    var onSpeechCompleted: (() -> Unit)? = null
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
@@ -48,15 +53,18 @@ class TtsManager(
 
                 override fun onDone(utteranceId: String?) {
                     onSpeechStateChanged?.invoke(false)
+                    onSpeechCompleted?.invoke()
                 }
 
                 @Deprecated("Deprecated in Java")
                 override fun onError(utteranceId: String?) {
                     onSpeechStateChanged?.invoke(false)
+                    onSpeechCompleted?.invoke()
                 }
 
                 override fun onError(utteranceId: String?, errorCode: Int) {
                     onSpeechStateChanged?.invoke(false)
+                    onSpeechCompleted?.invoke()
                 }
             })
 
@@ -74,7 +82,7 @@ class TtsManager(
      * Set language for speech output with graceful fallback to US English.
      * Returns true if the requested language was successfully configured.
      */
-    fun setLanguage(language: AppLanguage): Boolean {
+    open fun setLanguage(language: AppLanguage): Boolean {
         currentLanguage = language
         if (!isReady) return false
         return applyLanguage(language)
@@ -116,7 +124,7 @@ class TtsManager(
     /**
      * Set playback speech rate (e.g. 0.75f, 1.0f, 1.5f).
      */
-    fun setSpeechRate(rate: Float) {
+    open fun setSpeechRate(rate: Float) {
         currentSpeechRate = rate.coerceIn(0.5f, 2.5f)
         tts?.setSpeechRate(currentSpeechRate)
     }
@@ -124,7 +132,7 @@ class TtsManager(
     /**
      * Speak text aloud if voice feedback is enabled.
      */
-    fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
+    open fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
         if (!voiceFeedbackEnabled) {
             Log.d(tag, "Voice feedback is disabled in settings; suppressing speech")
             return
@@ -140,7 +148,7 @@ class TtsManager(
     /**
      * Stop any ongoing speech immediately.
      */
-    fun stop() {
+    open fun stop() {
         tts?.stop()
         onSpeechStateChanged?.invoke(false)
     }
@@ -148,14 +156,14 @@ class TtsManager(
     /**
      * Check if TTS engine is currently vocalizing.
      */
-    fun isSpeaking(): Boolean {
+    open fun isSpeaking(): Boolean {
         return tts?.isSpeaking == true
     }
 
     /**
      * Release TTS engine resources.
      */
-    fun shutdown() {
+    open fun shutdown() {
         stop()
         tts?.shutdown()
         tts = null

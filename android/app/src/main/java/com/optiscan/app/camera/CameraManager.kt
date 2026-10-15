@@ -54,7 +54,7 @@ class CameraManager {
                 val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
 
                 cameraProvider?.unbindAll()
-                cameraProvider?.bindToLifecycle(
+                camera = cameraProvider?.bindToLifecycle(
                     lifecycleOwner,
                     cameraSelector,
                     preview,
@@ -67,6 +67,22 @@ class CameraManager {
                 onCameraBound?.invoke(false)
             }
         }, ContextCompat.getMainExecutor(context))
+    }
+
+    private var camera: androidx.camera.core.Camera? = null
+
+    /**
+     * Enable or disable the camera torch / flash.
+     */
+    fun setTorchEnabled(enabled: Boolean): Boolean {
+        val cam = camera ?: return false
+        return try {
+            cam.cameraControl.enableTorch(enabled)
+            true
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to toggle torch: ${e.message}")
+            false
+        }
     }
 
     /**
@@ -174,6 +190,7 @@ class CameraManager {
      * Unbind all use cases and release camera provider.
      */
     fun unbind() {
+        camera = null
         cameraProvider?.unbindAll()
         cameraProvider = null
     }

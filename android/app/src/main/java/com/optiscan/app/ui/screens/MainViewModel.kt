@@ -21,6 +21,10 @@ import com.optiscan.app.speech.SpeechRecognitionState
 import com.optiscan.app.speech.TtsManager
 import com.optiscan.app.ui.components.aurora.AssistantState
 import com.optiscan.app.ui.localization.AppStrings
+import com.optiscan.app.voice.VoiceCommand
+import com.optiscan.app.voice.VoiceCommandRouter
+import com.optiscan.app.voice.VoiceController
+import com.optiscan.app.voice.VoiceControllerState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,6 +73,9 @@ class MainViewModel(
 
     private val tag = "MainViewModel"
     private var ttsManager: TtsManager? = null
+    var voiceController: VoiceController? = null
+        private set
+    private var appContext: Context? = null
 
     // Navigation Stack
     private val backStack = mutableListOf<Screen>()
@@ -88,6 +95,12 @@ class MainViewModel(
 
     private val _hasCameraPermission = MutableStateFlow(false)
     val hasCameraPermission: StateFlow<Boolean> = _hasCameraPermission.asStateFlow()
+
+    private val _hasAudioPermission = MutableStateFlow(false)
+    val hasAudioPermission: StateFlow<Boolean> = _hasAudioPermission.asStateFlow()
+
+    private val _isSpeechRecognitionAvailable = MutableStateFlow(true)
+    val isSpeechRecognitionAvailable: StateFlow<Boolean> = _isSpeechRecognitionAvailable.asStateFlow()
 
     private val _isCapturing = MutableStateFlow(false)
     val isCapturing: StateFlow<Boolean> = _isCapturing.asStateFlow()
@@ -116,20 +129,31 @@ class MainViewModel(
     private val _speechState = MutableStateFlow<SpeechRecognitionState>(SpeechRecognitionState.Idle)
     val speechState: StateFlow<SpeechRecognitionState> = _speechState.asStateFlow()
 
+    private val _voiceControllerState = MutableStateFlow(VoiceControllerState.IDLE)
+    val voiceControllerState: StateFlow<VoiceControllerState> = _voiceControllerState.asStateFlow()
+
     private val _speechAmplitude = MutableStateFlow(0f)
     val speechAmplitude: StateFlow<Float> = _speechAmplitude.asStateFlow()
+
+    // Line-by-line reading state for OCR
+    private var ocrLines: List<String> = emptyList()
+    private var currentOcrLineIndex: Int = -1
 
     val assistantState: StateFlow<AssistantState> = combine(
         _isAnalyzing,
         _isSpeaking,
         _speechState,
+        _voiceControllerState,
         _analysisError
-    ) { isAnalyzing, isSpeaking, speechState, error ->
+    ) { isAnalyzing, isSpeaking, speechState, voiceState, error ->
         when {
-            error != null -> AssistantState.ERROR
-            speechState is SpeechRecognitionState.Listening || speechState is SpeechRecognitionState.Ready -> AssistantState.LISTENING
+            error != null || voiceState == VoiceControllerState.ERROR -> AssistantState.ERROR
+            voiceState == VoiceControllerState.COMMAND_PROCESSING -> AssistantState.COMMAND_PROCESSING
+            voiceState == VoiceControllerState.LISTENING || speechState is SpeechRecognitionState.Listening || speechState is SpeechRecognitionState.Ready -> AssistantState.LISTENING
+            voiceState == VoiceControllerState.WAITING_FOR_USER -> AssistantState.WAITING_FOR_USER
             isAnalyzing -> AssistantState.PROCESSING
-            isSpeaking -> AssistantState.SPEAKING
+            isSpeaking || voiceState == VoiceControllerState.SPEAKING -> AssistantState.SPEAKING
+            voiceState == VoiceControllerState.STOPPED -> AssistantState.STOPPED
             speechState is SpeechRecognitionState.Success -> AssistantState.SUCCESS
             else -> AssistantState.IDLE
         }
@@ -176,6 +200,40 @@ class MainViewModel(
         applySettingsToTts(_settings.value)
     }
 
+    fun attachContext(context: Context) {
+        this.appContext = context.applicationContext
+    }
+
+    fun setAudioPermission(granted: Boolean) {
+        _hasAudioPermission.value = granted
+        voiceController?.hasAudioPermission = granted
+    }
+
+    fun attachVoiceController(controller: VoiceController) {
+        this.voiceController = controller
+        controller.hasAudioPermission = _hasAudioPermission.value
+        controller.currentScreen = _currentScreen.value
+        controller.currentLanguage = _settings.value.language
+
+        controller.onCommandDispatched = { command, rawText ->
+            handleVoiceCommand(command, rawText)
+        }
+        controller.onFeedbackMessage = { msg ->
+            speak(msg)
+        }
+
+        viewModelScope.launch {
+            controller.voiceState.collect { vState ->
+                _voiceControllerState.value = vState
+            }
+        }
+        viewModelScope.launch {
+            controller.micAmplitude.collect { amp ->
+                _speechAmplitude.value = amp
+            }
+        }
+    }
+
     fun initAccessibility(context: Context) {
         val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as? AccessibilityManager
         _isTalkBackActive.value = am?.isTouchExplorationEnabled == true
@@ -208,11 +266,15 @@ class MainViewModel(
             backStack.add(_currentScreen.value)
         }
         _currentScreen.value = screen
+        voiceController?.currentScreen = screen
+        if (screen is Screen.ReadTextResult) {
+            initOcrLines(screen.text)
+        }
     }
 
     fun navigateBack(): Boolean {
         stopSpeech()
-        return if (backStack.isNotEmpty()) {
+        val handled = if (backStack.isNotEmpty()) {
             val prev = backStack.removeAt(backStack.size - 1)
             _currentScreen.value = prev
             true
@@ -222,13 +284,21 @@ class MainViewModel(
         } else {
             false
         }
+        if (handled) {
+            voiceController?.currentScreen = _currentScreen.value
+            val curr = _currentScreen.value
+            if (curr is Screen.ReadTextResult) {
+                initOcrLines(curr.text)
+            }
+        }
+        return handled
     }
 
     /**
-     * Executes photo capture from CameraX and moves to ImagePreview.
+     * Executes photo capture from CameraX and moves to ImagePreview or directly analyzes.
      * Prevents overlapping concurrent captures and verifies camera permission.
      */
-    fun capturePhoto(context: Context, task: ScanTask) {
+    fun capturePhoto(context: Context, task: ScanTask, autoAnalyze: Boolean = false) {
         if (_isCapturing.value) {
             Log.d(tag, "Capture already in progress; ignoring duplicate request.")
             return
@@ -251,7 +321,12 @@ class MainViewModel(
                     val bytes = result.getOrNull()
                     val bmp = bytes?.let { cameraManager.bytesToBitmap(it) }
                     setCapturedImage(bmp, bytes)
-                    navigateTo(Screen.ImagePreview(task, bytes))
+                    if (autoAnalyze) {
+                        navigateTo(Screen.Processing(task, bytes))
+                        analyzeCapturedImage(task, bytes)
+                    } else {
+                        navigateTo(Screen.ImagePreview(task, bytes))
+                    }
                 } else {
                     val err = if (isHindi) {
                         "फोटो खींचने में विफलता। कृपया दोबारा प्रयास करें।"
@@ -353,6 +428,7 @@ class MainViewModel(
             repository.updateBaseUrl(newSettings.customBackendUrl)
         }
         applySettingsToTts(newSettings)
+        voiceController?.currentLanguage = newSettings.language
 
         // Announce language change to user with immediate accessibility feedback
         if (previousLanguage != newSettings.language) {
@@ -827,9 +903,366 @@ class MainViewModel(
         }
     }
 
+    // OCR Line-by-line Reading Navigation
+    private fun initOcrLines(text: String) {
+        ocrLines = text.split("\n")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        currentOcrLineIndex = -1
+    }
+
+    fun readNextOcrLine() {
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        if (ocrLines.isEmpty()) {
+            val curr = _currentScreen.value
+            if (curr is Screen.ReadTextResult) {
+                initOcrLines(curr.text)
+            }
+        }
+        if (ocrLines.isEmpty()) {
+            speak(if (isHindi) "कोई टेक्स्ट उपलब्ध नहीं है।" else "No text available.")
+            return
+        }
+        if (currentOcrLineIndex < ocrLines.size - 1) {
+            currentOcrLineIndex++
+            speak(ocrLines[currentOcrLineIndex])
+        } else {
+            speak(if (isHindi) "दस्तावेज़ का अंत हो गया है।" else "End of document reached.")
+        }
+    }
+
+    fun readPreviousOcrLine() {
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        if (ocrLines.isEmpty()) {
+            val curr = _currentScreen.value
+            if (curr is Screen.ReadTextResult) {
+                initOcrLines(curr.text)
+            }
+        }
+        if (ocrLines.isEmpty()) {
+            speak(if (isHindi) "कोई टेक्स्ट उपलब्ध नहीं है।" else "No text available.")
+            return
+        }
+        if (currentOcrLineIndex > 0) {
+            currentOcrLineIndex--
+            speak(ocrLines[currentOcrLineIndex])
+        } else {
+            speak(if (isHindi) "आप दस्तावेज़ की शुरुआत में हैं।" else "You are at the beginning of the document.")
+        }
+    }
+
+    fun repeatCurrentOcrLine() {
+        if (currentOcrLineIndex in ocrLines.indices) {
+            speak(ocrLines[currentOcrLineIndex])
+        } else {
+            val curr = _currentScreen.value
+            if (curr is Screen.ReadTextResult) {
+                speak(curr.text)
+            }
+        }
+    }
+
+    fun resumeOcrReading() {
+        if (currentOcrLineIndex in ocrLines.indices) {
+            speak(ocrLines[currentOcrLineIndex])
+        } else {
+            val curr = _currentScreen.value
+            if (curr is Screen.ReadTextResult) {
+                speak(curr.text)
+            }
+        }
+    }
+
+    /**
+     * Dispatcher for deterministic voice commands recognized across the app.
+     */
+    fun handleVoiceCommand(command: VoiceCommand, rawText: String) {
+        val isHindi = _settings.value.language == AppLanguage.HINDI
+        val strings = AppStrings.get(_settings.value.language)
+
+        when (command) {
+            is VoiceCommand.Help, is VoiceCommand.WhatCanISay -> {
+                val help = VoiceCommandRouter.getHelpText(_currentScreen.value, _settings.value.language)
+                speak(help)
+            }
+
+            is VoiceCommand.GoHome -> {
+                navigateTo(Screen.Home, clearBackstack = true)
+                speak(if (isHindi) "होम स्क्रीन पर आ गए।" else "Navigated to home screen.")
+            }
+
+            is VoiceCommand.GoBack -> {
+                if (navigateBack()) {
+                    speak(if (isHindi) "वापस जा रहे हैं।" else "Going back.")
+                } else {
+                    speak(if (isHindi) "आप पहले से होम स्क्रीन पर हैं।" else "Already at home screen.")
+                }
+            }
+
+            is VoiceCommand.OpenCamera -> {
+                navigateTo(Screen.Camera(command.task))
+                val prompt = if (isHindi) {
+                    "कैमरा खुल गया है। फोटो खींचने के लिए 'कैप्चर' बोलें।"
+                } else {
+                    "Camera opened. Point at an object and say Capture."
+                }
+                speak(prompt)
+            }
+
+            is VoiceCommand.ReadText -> {
+                navigateTo(Screen.Camera(ScanTask.READ_TEXT))
+                val prompt = if (isHindi) {
+                    "टेक्स्ट पढ़ने का मोड। दस्तावेज़ की ओर कैमरा रखें और 'कैप्चर' बोलें।"
+                } else {
+                    "Read text mode. Point camera at document and say Capture."
+                }
+                speak(prompt)
+            }
+
+            is VoiceCommand.DescribeSurroundings -> {
+                navigateTo(Screen.Camera(ScanTask.DESCRIBE_SURROUNDINGS))
+                val prompt = if (isHindi) {
+                    "आसपास का विवरण मोड। कैमरा रखें और 'कैप्चर' बोलें।"
+                } else {
+                    "Describe surroundings mode. Point camera and say Capture."
+                }
+                speak(prompt)
+            }
+
+            is VoiceCommand.AskQuestion -> {
+                val query = command.query
+                val current = _currentScreen.value
+                if (current is Screen.AskQuestion) {
+                    if (!query.isNullOrBlank()) {
+                        askQuestion(query, current.contextContent) { answer ->
+                            speak(answer)
+                        }
+                    } else {
+                        speak(if (isHindi) "कृपया अपना सवाल पूछें।" else "Please ask your question.")
+                    }
+                } else {
+                    navigateTo(Screen.AskQuestion(contextTitle = strings.askQuestionTitle, contextContent = null))
+                    if (!query.isNullOrBlank()) {
+                        askQuestion(query, null) { answer ->
+                            speak(answer)
+                        }
+                    } else {
+                        speak(if (isHindi) "सवाल पूछें मोड। अपना सवाल बोलें।" else "Ask a question mode. Speak your question.")
+                    }
+                }
+            }
+
+            is VoiceCommand.GuidedTask -> {
+                startGuidedTask("Guided Task")
+            }
+
+            is VoiceCommand.Repeat -> {
+                when (val current = _currentScreen.value) {
+                    is Screen.ReadTextResult -> repeatCurrentOcrLine()
+                    is Screen.DescriptionResult -> speak(current.description)
+                    is Screen.GuidedTask -> repeatGuidedTaskInstruction()
+                    else -> speak(strings.homeSpokenAnnouncement)
+                }
+            }
+
+            is VoiceCommand.StopSpeaking -> {
+                stopSpeech()
+            }
+
+            is VoiceCommand.StartListening -> {
+                voiceController?.startListening()
+            }
+
+            is VoiceCommand.StopListening -> {
+                voiceController?.stopListening(userRequested = true)
+            }
+
+            is VoiceCommand.Cancel -> {
+                if (_isAnalyzing.value) {
+                    cancelAnalysis()
+                } else if (_currentScreen.value !is Screen.Home && _currentScreen.value !is Screen.Welcome) {
+                    navigateBack()
+                    speak(if (isHindi) "रद्द किया गया।" else "Cancelled.")
+                } else {
+                    speak(if (isHindi) "रद्द किया गया।" else "Cancelled.")
+                }
+            }
+
+            // Context-sensitive Camera Commands
+            is VoiceCommand.CapturePhoto -> {
+                when (val current = _currentScreen.value) {
+                    is Screen.Camera -> {
+                        appContext?.let { ctx ->
+                            capturePhoto(ctx, current.task, autoAnalyze = true)
+                        } ?: speak(if (isHindi) "कैमरा संदर्भ उपलब्ध नहीं है।" else "Camera context unavailable.")
+                    }
+                    is Screen.GuidedTask -> {
+                        rescanGuidedTask()
+                    }
+                    else -> {
+                        val prompt = if (isHindi) {
+                            "कैमरा खुला नहीं है। पहले 'कैमरा खोलो' बोलें।"
+                        } else {
+                            "Camera is not open. Say 'Open camera' first."
+                        }
+                        speak(prompt)
+                    }
+                }
+            }
+
+            is VoiceCommand.RetakePhoto -> {
+                when (val current = _currentScreen.value) {
+                    is Screen.ImagePreview -> {
+                        navigateTo(Screen.Camera(current.task))
+                        speak(if (isHindi) "कैमरा दोबारा खुला। फोटो खींचने के लिए 'कैप्चर' बोलें।" else "Camera reopened. Say Capture.")
+                    }
+                    is Screen.Camera -> {
+                        speak(if (isHindi) "कैमरा पहले से खुला है। फोटो खींचने के लिए 'कैप्चर' बोलें।" else "Camera is already open. Say Capture.")
+                    }
+                    else -> {
+                        speak(if (isHindi) "दोबारा फोटो लेने के लिए कैमरा खुला होना चाहिए।" else "Camera must be open to retake photo.")
+                    }
+                }
+            }
+
+            is VoiceCommand.ToggleFlash -> {
+                val success = cameraManager.setTorchEnabled(command.enable)
+                if (success) {
+                    val prompt = if (command.enable) {
+                        if (isHindi) "फ्लैश चालू किया गया।" else "Flash turned on."
+                    } else {
+                        if (isHindi) "फ्लैश बंद किया गया।" else "Flash turned off."
+                    }
+                    speak(prompt)
+                } else {
+                    speak(if (isHindi) "इस डिवाइस पर फ्लैश उपलब्ध नहीं है।" else "Flash is not available on this device.")
+                }
+            }
+
+            // Context-sensitive Image Preview Commands
+            is VoiceCommand.UsePhoto -> {
+                val current = _currentScreen.value
+                if (current is Screen.ImagePreview) {
+                    navigateTo(Screen.Processing(current.task, current.imageBytes))
+                    analyzeCapturedImage(current.task, current.imageBytes)
+                } else {
+                    speak(if (isHindi) "कोई समीक्षाधीन फोटो नहीं है।" else "No photo currently under preview.")
+                }
+            }
+
+            // Context-sensitive OCR Results Commands
+            is VoiceCommand.ReadAll -> {
+                val current = _currentScreen.value
+                if (current is Screen.ReadTextResult) {
+                    speak(current.text)
+                } else {
+                    speak(if (isHindi) "पढ़ने के लिए कोई टेक्स्ट स्क्रीन पर नहीं है।" else "No text on screen to read.")
+                }
+            }
+
+            is VoiceCommand.NextLine -> {
+                readNextOcrLine()
+            }
+
+            is VoiceCommand.PreviousLine -> {
+                readPreviousOcrLine()
+            }
+
+            is VoiceCommand.RepeatLine -> {
+                repeatCurrentOcrLine()
+            }
+
+            is VoiceCommand.PauseReading -> {
+                stopSpeech()
+            }
+
+            is VoiceCommand.ResumeReading -> {
+                resumeOcrReading()
+            }
+
+            is VoiceCommand.ReadFaster -> {
+                val newRate = (_settings.value.speechRate + 0.25f).coerceAtMost(2.5f)
+                updateSettings(_settings.value.copy(speechRate = newRate))
+                speak(if (isHindi) "पढ़ने की गति बढ़ा दी गई है।" else "Speech rate increased.")
+            }
+
+            is VoiceCommand.ReadSlower -> {
+                val newRate = (_settings.value.speechRate - 0.25f).coerceAtLeast(0.5f)
+                updateSettings(_settings.value.copy(speechRate = newRate))
+                speak(if (isHindi) "पढ़ने की गति घटा दी गई है।" else "Speech rate decreased.")
+            }
+
+            is VoiceCommand.AskAboutThisText -> {
+                val current = _currentScreen.value
+                if (current is Screen.ReadTextResult) {
+                    navigateTo(Screen.AskQuestion(contextTitle = strings.extractedTextTitle, contextContent = current.text))
+                    speak(if (isHindi) "इस दस्तावेज़ के बारे में अपना सवाल पूछें।" else "Ask your question about this document.")
+                } else {
+                    speak(if (isHindi) "कोई टेक्स्ट संदर्भ उपलब्ध नहीं है।" else "No text context available.")
+                }
+            }
+
+            // Context-sensitive Scene & Guided Task Commands
+            is VoiceCommand.ScanAgain -> {
+                when (_currentScreen.value) {
+                    is Screen.DescriptionResult -> {
+                        navigateTo(Screen.Camera(ScanTask.DESCRIBE_SURROUNDINGS))
+                        speak(if (isHindi) "कैमरा दोबारा खुल गया है।" else "Camera reopened for rescanning.")
+                    }
+                    is Screen.ReadTextResult -> {
+                        navigateTo(Screen.Camera(ScanTask.READ_TEXT))
+                        speak(if (isHindi) "कैमरा दोबारा खुल गया है।" else "Camera reopened for rescanning.")
+                    }
+                    is Screen.GuidedTask -> {
+                        rescanGuidedTask()
+                    }
+                    else -> {
+                        navigateTo(Screen.Camera(ScanTask.DESCRIBE_SURROUNDINGS))
+                        speak(if (isHindi) "कैमरा खुल गया है।" else "Camera opened.")
+                    }
+                }
+            }
+
+            is VoiceCommand.NextStep -> {
+                val current = _currentScreen.value
+                if (current is Screen.GuidedTask) {
+                    advanceGuidedTask()
+                } else {
+                    speak(if (isHindi) "कोई स्टेप बाय स्टेप टास्क सक्रिय नहीं है।" else "No guided task is currently active.")
+                }
+            }
+
+            is VoiceCommand.RepeatStep -> {
+                repeatGuidedTaskInstruction()
+            }
+
+            is VoiceCommand.StopTask -> {
+                stopGuidedTask()
+            }
+
+            // Fallback for unrecognized speech
+            is VoiceCommand.Unknown -> {
+                val current = _currentScreen.value
+                if (current is Screen.AskQuestion) {
+                    askQuestion(command.rawText, current.contextContent) { answer ->
+                        speak(answer)
+                    }
+                } else {
+                    val prompt = if (isHindi) {
+                        "माफ़ करें, मुझे समझ नहीं आया। क्या कर सकते हैं जानने के लिए 'मदद' बोलें।"
+                    } else {
+                        "Command not recognized. Say 'Help' to hear available options."
+                    }
+                    speak(prompt)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         analysisJob?.cancel()
+        voiceController?.onDestroy()
         cameraManager.unbind()
         ttsManager?.shutdown()
     }

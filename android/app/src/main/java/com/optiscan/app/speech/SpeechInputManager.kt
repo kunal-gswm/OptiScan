@@ -24,12 +24,16 @@ sealed interface SpeechRecognitionState {
  * Manages speech recognition for spoken questions supporting English ("en-US") and Hindi ("hi-IN")
  * with robust error handling and typed input fallback.
  */
-class SpeechInputManager(
+open class SpeechInputManager(
     private val context: Context,
     private val recognizerFactory: ((Context) -> SpeechRecognizer?) = { ctx ->
-        if (SpeechRecognizer.isRecognitionAvailable(ctx)) {
-            SpeechRecognizer.createSpeechRecognizer(ctx)
-        } else {
+        try {
+            if (SpeechRecognizer.isRecognitionAvailable(ctx)) {
+                SpeechRecognizer.createSpeechRecognizer(ctx)
+            } else {
+                null
+            }
+        } catch (_: Exception) {
             null
         }
     }
@@ -43,14 +47,18 @@ class SpeechInputManager(
     /**
      * Check if voice recognition service is supported on this device.
      */
-    fun isRecognitionAvailable(): Boolean {
-        return SpeechRecognizer.isRecognitionAvailable(context)
+    open fun isRecognitionAvailable(): Boolean {
+        return try {
+            SpeechRecognizer.isRecognitionAvailable(context)
+        } catch (_: Exception) {
+            false
+        }
     }
 
     /**
      * Start listening for spoken questions in the selected application language.
      */
-    fun startListening(language: AppLanguage) {
+    open fun startListening(language: AppLanguage) {
         if (!isRecognitionAvailable()) {
             val msg = if (language == AppLanguage.HINDI) {
                 "इस डिवाइस पर आवाज़ पहचान उपलब्ध नहीं है। कृपया लिखकर प्रश्न पूछें।"
@@ -138,7 +146,7 @@ class SpeechInputManager(
     /**
      * Stop listening to current utterance.
      */
-    fun stopListening() {
+    open fun stopListening() {
         try {
             recognizer?.stopListening()
         } catch (_: Exception) {}
@@ -147,7 +155,7 @@ class SpeechInputManager(
     /**
      * Cancel active recognition session.
      */
-    fun cancel() {
+    open fun cancel() {
         try {
             recognizer?.cancel()
             onStateChanged?.invoke(SpeechRecognitionState.Idle)
@@ -157,7 +165,7 @@ class SpeechInputManager(
     /**
      * Clean up recognizer resources.
      */
-    fun destroy() {
+    open fun destroy() {
         try {
             recognizer?.destroy()
         } catch (_: Exception) {}

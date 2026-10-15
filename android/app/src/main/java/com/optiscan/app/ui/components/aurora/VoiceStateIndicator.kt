@@ -46,9 +46,9 @@ fun VoiceStateIndicator(
     modifier: Modifier = Modifier
 ) {
     val indicatorColor = when (state) {
-        AssistantState.IDLE -> AuroraCyan
+        AssistantState.IDLE, AssistantState.WAITING_FOR_USER -> AuroraCyan
         AssistantState.LISTENING -> AuroraCyan
-        AssistantState.PROCESSING -> AuroraViolet
+        AssistantState.PROCESSING, AssistantState.COMMAND_PROCESSING -> AuroraViolet
         AssistantState.SPEAKING -> AuroraCyan
         AssistantState.SUCCESS -> AuroraTeal
         AssistantState.ERROR -> AuroraError
@@ -60,6 +60,8 @@ fun VoiceStateIndicator(
         AssistantState.IDLE -> if (isHindi) "तैयार हूँ" else "Ready when you are"
         AssistantState.LISTENING -> if (isHindi) "सुन रहा हूँ..." else "I'm listening..."
         AssistantState.PROCESSING -> if (isHindi) "विश्लेषण हो रहा है..." else "Analyzing..."
+        AssistantState.COMMAND_PROCESSING -> if (isHindi) "कमांड प्रोसेस हो रही है..." else "Processing command..."
+        AssistantState.WAITING_FOR_USER -> if (isHindi) "आपकी आवाज़ की प्रतीक्षा..." else "Waiting for speech..."
         AssistantState.SPEAKING -> if (isHindi) "बोल रहा हूँ..." else "Speaking aloud"
         AssistantState.SUCCESS -> if (isHindi) "पूर्ण हुआ" else "Done"
         AssistantState.ERROR -> if (isHindi) "सेवा अनुपलब्ध" else "Service unavailable"

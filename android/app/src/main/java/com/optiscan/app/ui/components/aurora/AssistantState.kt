@@ -14,6 +14,12 @@ enum class AssistantState {
     /** Backend Gemini analysis, OCR processing, or prompt evaluation */
     PROCESSING,
 
+    /** Voice command parsing and routing in progress */
+    COMMAND_PROCESSING,
+
+    /** Waiting for user speech after silence or prompt */
+    WAITING_FOR_USER,
+
     /** Spoken TTS response actively playing back to the user */
     SPEAKING,
 

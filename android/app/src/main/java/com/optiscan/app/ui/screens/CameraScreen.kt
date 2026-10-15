@@ -74,6 +74,7 @@ fun CameraScreen(
     onCaptureClicked: () -> Unit,
     onBackClick: () -> Unit,
     onInstructionSpoken: () -> Unit,
+    onToggleFlash: ((Boolean) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = com.optiscan.app.ui.localization.AppStrings.get(language)
@@ -138,7 +139,11 @@ fun CameraScreen(
                 // Flash Toggle Button
                 OptiScanButton(
                     text = if (flashEnabled) strings.flashOn else strings.flashOff,
-                    onClick = { flashEnabled = !flashEnabled },
+                    onClick = {
+                        val next = !flashEnabled
+                        flashEnabled = next
+                        onToggleFlash?.invoke(next)
+                    },
                     variant = if (flashEnabled) ButtonVariant.AURORA else ButtonVariant.SURFACE,
                     icon = if (flashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                     contentDesc = if (flashEnabled) "${strings.flashOn}. Tap to toggle." else "${strings.flashOff}. Tap to toggle.",

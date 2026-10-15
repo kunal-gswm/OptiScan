@@ -78,6 +78,7 @@ fun HomeScreen(
     onNavigateToSettings: () -> Unit,
     onAnnounceHome: () -> Unit,
     onNavigateToOnDeviceConversation: (() -> Unit)? = null,
+    onResumeListening: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val strings = AppStrings.get(language)
@@ -155,10 +156,16 @@ fun HomeScreen(
                         state = assistantState,
                         amplitude = speechAmplitude,
                         size = 120.dp,
-                        onClick = onNavigateToAskQuestion,
+                        onClick = {
+                            if (assistantState == AssistantState.WAITING_FOR_USER || assistantState == AssistantState.STOPPED) {
+                                onResumeListening?.invoke() ?: onNavigateToAskQuestion()
+                            } else {
+                                onNavigateToAskQuestion()
+                            }
+                        },
                         modifier = Modifier.semantics {
                             this.role = Role.Button
-                            this.contentDescription = "Voice Assistant Orb. Double tap to ask a question."
+                            this.contentDescription = "Voice Assistant Orb. Double tap to speak."
                         }
                     )
 

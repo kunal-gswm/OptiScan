@@ -120,6 +120,9 @@ fun OptiScanApp(
                             performHaptic()
                             viewModel.navigateTo(Screen.OnDeviceConversation)
                         },
+                        onResumeListening = {
+                            viewModel.voiceController?.startListening()
+                        },
                         modifier = modifier.fillMaxSize()
                     )
                 }
@@ -146,6 +149,9 @@ fun OptiScanApp(
                             "Point camera at object. Press volume button, tap viewfinder, or tap Capture Photo."
                         }
                         viewModel.speak(instruction, isScreenAnnouncement = true)
+                    },
+                    onToggleFlash = { enable ->
+                        viewModel.cameraManager.setTorchEnabled(enable)
                     },
                     modifier = modifier.fillMaxSize()
                 )
