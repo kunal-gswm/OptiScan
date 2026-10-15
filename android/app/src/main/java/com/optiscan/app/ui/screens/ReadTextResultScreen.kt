@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -16,11 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,8 +34,7 @@ import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
 import com.optiscan.app.ui.localization.AppStrings
-import com.optiscan.app.ui.theme.BackgroundNearBlack
-import com.optiscan.app.ui.theme.TextLightGrey
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 
 /**
  * Screen F: Read Text Results
@@ -67,7 +62,7 @@ fun ReadTextResultScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
+        containerColor = BackgroundMidnightNavy
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -98,7 +93,7 @@ fun ReadTextResultScreen(
                 OptiScanButton(
                     text = strings.retakePhoto,
                     onClick = onCaptureAnother,
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.Default.CameraAlt,
                     contentDesc = "${strings.retakePhoto} button",
                     bypassTripleTap = true
@@ -124,7 +119,7 @@ fun ReadTextResultScreen(
                 val notice = when {
                     isLiveResult -> if (language == AppLanguage.HINDI) "Google Gemini द्वारा AI टेक्स्ट विश्लेषण" else "AI Text Extraction by Google Gemini"
                     !recaptureReason.isNullOrBlank() -> recaptureReason
-                    else -> if (language == AppLanguage.HINDI) "[ऑफलाइन मॉक] डेमो आउटपुट" else "[Offline Mock] Simulated demonstration output"
+                    else -> if (language == AppLanguage.HINDI) "[ऑफलाइन OCR] ऑन-डिवाइस ML Kit आउटपुट" else "[On-Device OCR] Offline ML Kit Extraction"
                 }
 
                 // Text Result Card
@@ -155,7 +150,7 @@ fun ReadTextResultScreen(
                 OptiScanButton(
                     text = strings.askQuestionAboutText,
                     onClick = { onAskQuestion(text) },
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDesc = "${strings.askQuestionAboutText} button"
                 )

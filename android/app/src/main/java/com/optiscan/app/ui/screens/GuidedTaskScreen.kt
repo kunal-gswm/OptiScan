@@ -27,7 +27,7 @@ import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
 import com.optiscan.app.ui.localization.AppStrings
-import com.optiscan.app.ui.theme.BackgroundNearBlack
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 
 /**
  * Screen for Guided Task Mode (AROMA / Be My Eyes mixed-initiative model).
@@ -60,7 +60,7 @@ fun GuidedTaskScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
+        containerColor = BackgroundMidnightNavy
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -131,7 +131,7 @@ fun GuidedTaskScreen(
                 OptiScanButton(
                     text = strings.scanWorkspaceForNextStep,
                     onClick = onNextStep,
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.AutoMirrored.Filled.ArrowForward,
                     contentDesc = strings.scanWorkspaceNextStepContentDesc
                 )
@@ -168,7 +168,7 @@ fun GuidedTaskScreen(
             OptiScanButton(
                 text = strings.stopTask,
                 onClick = onStopTask,
-                variant = ButtonVariant.SURFACE,
+                variant = ButtonVariant.DANGER,
                 icon = Icons.Default.Close,
                 contentDesc = "${strings.stopTask}. Stop guided task session and return home."
             )

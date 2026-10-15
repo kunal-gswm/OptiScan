@@ -38,6 +38,7 @@ class SpeechInputManager(
     private var recognizer: SpeechRecognizer? = null
 
     var onStateChanged: ((SpeechRecognitionState) -> Unit)? = null
+    var onRmsChanged: ((Float) -> Unit)? = null
 
     /**
      * Check if voice recognition service is supported on this device.
@@ -93,7 +94,9 @@ class SpeechInputManager(
                     onStateChanged?.invoke(SpeechRecognitionState.Listening)
                 }
 
-                override fun onRmsChanged(rmsdB: Float) {}
+                override fun onRmsChanged(rmsdB: Float) {
+                    onRmsChanged?.invoke(rmsdB)
+                }
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {}
 

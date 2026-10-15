@@ -36,16 +36,17 @@ import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.ui.components.ButtonVariant
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.ScreenTitle
-import com.optiscan.app.ui.theme.ActionPrimaryBlue
-import com.optiscan.app.ui.theme.BackgroundNearBlack
+import com.optiscan.app.ui.theme.AuroraCyan
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 import com.optiscan.app.ui.theme.BorderSubtle
-import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
+import com.optiscan.app.ui.theme.SurfaceCard
+import com.optiscan.app.ui.theme.SurfaceCardElevated
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
 /**
  * Screen D: Image Preview
- * Displays captured photo with two large actions: Use This Photo or Retake Photo.
+ * Displays captured photo with clear Aurora styling and two high-contrast actions.
  */
 @Composable
 fun ImagePreviewScreen(
@@ -65,7 +66,7 @@ fun ImagePreviewScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
+        containerColor = BackgroundMidnightNavy
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -89,9 +90,9 @@ fun ImagePreviewScreen(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(vertical = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceDarkCharcoal)
-                    .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(SurfaceCardElevated)
+                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(20.dp))
                     .semantics {
                         this.contentDescription = strings.photoCapturedCardTitle
                     }
@@ -113,7 +114,7 @@ fun ImagePreviewScreen(
                         Icon(
                             imageVector = Icons.Default.Image,
                             contentDescription = null,
-                            tint = ActionPrimaryBlue,
+                            tint = AuroraCyan,
                             modifier = Modifier.size(68.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
@@ -142,7 +143,7 @@ fun ImagePreviewScreen(
                 OptiScanButton(
                     text = strings.useThisPhoto,
                     onClick = onUsePhoto,
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.Default.Check,
                     contentDesc = "${strings.useThisPhoto} button",
                     minHeight = 64

@@ -17,13 +17,18 @@ import com.optiscan.app.navigation.AppLanguage
 import com.optiscan.app.navigation.AppSettings
 import com.optiscan.app.navigation.ScanTask
 import com.optiscan.app.navigation.Screen
+import com.optiscan.app.speech.SpeechRecognitionState
 import com.optiscan.app.speech.TtsManager
+import com.optiscan.app.ui.components.aurora.AssistantState
 import com.optiscan.app.ui.localization.AppStrings
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
@@ -106,6 +111,39 @@ class MainViewModel(
     // Guided Task State
     private val _guidedTaskSession = MutableStateFlow<GuidedTaskSession?>(null)
     val guidedTaskSession: StateFlow<GuidedTaskSession?> = _guidedTaskSession.asStateFlow()
+
+    // Voice Input & Assistant State Machine
+    private val _speechState = MutableStateFlow<SpeechRecognitionState>(SpeechRecognitionState.Idle)
+    val speechState: StateFlow<SpeechRecognitionState> = _speechState.asStateFlow()
+
+    private val _speechAmplitude = MutableStateFlow(0f)
+    val speechAmplitude: StateFlow<Float> = _speechAmplitude.asStateFlow()
+
+    val assistantState: StateFlow<AssistantState> = combine(
+        _isAnalyzing,
+        _isSpeaking,
+        _speechState,
+        _analysisError
+    ) { isAnalyzing, isSpeaking, speechState, error ->
+        when {
+            error != null -> AssistantState.ERROR
+            speechState is SpeechRecognitionState.Listening || speechState is SpeechRecognitionState.Ready -> AssistantState.LISTENING
+            isAnalyzing -> AssistantState.PROCESSING
+            isSpeaking -> AssistantState.SPEAKING
+            speechState is SpeechRecognitionState.Success -> AssistantState.SUCCESS
+            else -> AssistantState.IDLE
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AssistantState.IDLE)
+
+    fun updateSpeechState(state: SpeechRecognitionState) {
+        _speechState.value = state
+    }
+
+    fun updateSpeechAmplitude(rmsdB: Float) {
+        // Map decibels to normalized 0f..1f range for visual feedback
+        val normalized = ((rmsdB + 2f) / 12f).coerceIn(0f, 1f)
+        _speechAmplitude.value = normalized
+    }
 
     init {
         val loadedSettings = preferencesManager?.loadSettings() ?: AppSettings()

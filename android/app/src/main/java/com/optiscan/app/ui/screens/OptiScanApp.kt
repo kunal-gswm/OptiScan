@@ -46,6 +46,8 @@ fun OptiScanApp(
     val hasCameraPermission by viewModel.hasCameraPermission.collectAsState()
     val isAnalyzing by viewModel.isAnalyzing.collectAsState()
     val analysisError by viewModel.analysisError.collectAsState()
+    val assistantState by viewModel.assistantState.collectAsState()
+    val speechAmplitude by viewModel.speechAmplitude.collectAsState()
     val strings = AppStrings.get(settings.language)
     val onDeviceViewModel: OnDeviceConversationViewModel = viewModel()
 
@@ -93,6 +95,8 @@ fun OptiScanApp(
                 is Screen.Home -> {
                     HomeScreen(
                         language = settings.language,
+                        assistantState = assistantState,
+                        speechAmplitude = speechAmplitude,
                         onNavigateToCamera = { task ->
                             performHaptic()
                             viewModel.navigateTo(Screen.Camera(task))

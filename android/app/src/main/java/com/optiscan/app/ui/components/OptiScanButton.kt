@@ -38,11 +38,13 @@ enum class ButtonVariant {
     SECONDARY,
     SURFACE,
     OUTLINE,
-    DANGER
+    DANGER,
+    AURORA
 }
 
 /**
  * Accessibility-first button enforcing minimum touch targets, high contrast, and clear semantics.
+ * Styled with OptiScan Aurora luminous accents.
  */
 @Composable
 fun OptiScanButton(
@@ -58,18 +60,22 @@ fun OptiScanButton(
 ) {
     val containerColor = when (variant) {
         ButtonVariant.PRIMARY -> ActionPrimaryBlue
-        ButtonVariant.SECONDARY -> ActionSecondaryGreen
+        ButtonVariant.SECONDARY -> SurfaceCard
         ButtonVariant.SURFACE -> SurfaceCard
         ButtonVariant.OUTLINE -> Color.Transparent
         ButtonVariant.DANGER -> AlertError
+        ButtonVariant.AURORA -> ActionPrimaryBlue
     }
 
     val contentColor = TextWhite
 
     val border = when (variant) {
-        ButtonVariant.OUTLINE -> BorderStroke(2.dp, BorderHighlight)
+        ButtonVariant.AURORA -> BorderStroke(1.5.dp, BorderHighlight)
+        ButtonVariant.OUTLINE -> BorderStroke(2.dp, BorderHighlight.copy(alpha = 0.8f))
         ButtonVariant.SURFACE -> BorderStroke(1.5.dp, BorderSubtle)
-        else -> BorderStroke(1.dp, BorderHighlight.copy(alpha = 0.25f))
+        ButtonVariant.SECONDARY -> BorderStroke(1.5.dp, BorderSubtle)
+        ButtonVariant.DANGER -> BorderStroke(1.dp, AlertError.copy(alpha = 0.5f))
+        else -> BorderStroke(1.dp, BorderHighlight.copy(alpha = 0.35f))
     }
 
     val description = contentDesc ?: text

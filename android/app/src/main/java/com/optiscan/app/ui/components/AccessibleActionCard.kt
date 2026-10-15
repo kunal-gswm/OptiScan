@@ -59,8 +59,8 @@ fun AccessibleActionCard(
     )
 
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCharcoal),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
         border = BorderStroke(1.5.dp, BorderSubtle),
         modifier = modifier
             .fillMaxWidth()
@@ -79,14 +79,24 @@ fun AccessibleActionCard(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(18.dp)
+                .padding(16.dp)
         ) {
-            // Icon Badge
+            // Luminous Left Accent Indicator Pill
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(44.dp)
+                    .background(accentColor, RoundedCornerShape(2.dp))
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Icon Badge with Glowing Halo
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .size(54.dp)
-                    .background(accentColor.copy(alpha = 0.22f), CircleShape)
+                    .size(56.dp)
+                    .background(accentColor.copy(alpha = 0.16f), CircleShape)
             ) {
                 Icon(
                     imageVector = icon,
@@ -121,8 +131,8 @@ fun AccessibleActionCard(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = null,
-                tint = TextLightGrey,
-                modifier = Modifier.size(26.dp)
+                tint = accentColor.copy(alpha = 0.85f),
+                modifier = Modifier.size(24.dp)
             )
         }
     }

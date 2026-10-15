@@ -1,14 +1,19 @@
 package com.optiscan.app.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
@@ -22,6 +27,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.optiscan.app.ui.theme.BorderSubtle
+import com.optiscan.app.ui.theme.SurfaceCard
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
@@ -52,22 +59,30 @@ fun ScreenTitle(
                 modifier = Modifier.weight(1f, fill = false)
             ) {
                 if (onBackClick != null) {
-                    IconButton(
-                        onClick = onBackClick,
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(52.dp)
-                            .semantics {
-                                this.contentDescription = backContentDescription
-                            }
+                            .size(48.dp)
+                            .background(SurfaceCard, CircleShape)
+                            .border(1.dp, BorderSubtle, CircleShape)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                            tint = TextWhite,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .semantics {
+                                    this.contentDescription = backContentDescription
+                                }
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = TextWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                 }
 
                 Text(

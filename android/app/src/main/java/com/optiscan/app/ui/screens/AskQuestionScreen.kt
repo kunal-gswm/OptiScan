@@ -18,18 +18,12 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -39,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,20 +60,22 @@ import com.optiscan.app.ui.components.ScreenTitle
 import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
+import com.optiscan.app.ui.components.aurora.AssistantOrb
+import com.optiscan.app.ui.components.aurora.AssistantState
+import com.optiscan.app.ui.components.aurora.AuroraBackground
+import com.optiscan.app.ui.components.aurora.VoiceStateIndicator
 import com.optiscan.app.ui.localization.AppStrings
 import com.optiscan.app.ui.theme.ActionPrimaryBlue
-import com.optiscan.app.ui.theme.AlertError
-import com.optiscan.app.ui.theme.BackgroundNearBlack
-import com.optiscan.app.ui.theme.BorderHighlight
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 import com.optiscan.app.ui.theme.BorderSubtle
-import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
+import com.optiscan.app.ui.theme.SurfaceCard
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
 /**
  * Screen H: Ask a Question
- * Conversational voice assistant screen supporting Hindi & English speech input,
- * microphone permission handling, accessible error recovery, and typed question fallback.
+ * Conversational voice assistant screen featuring the reactive OptiScan Aurora AssistantOrb,
+ * live audio amplitude reactivity, spoken response playback, and accessible typed fallback.
  */
 @Composable
 fun AskQuestionScreen(
@@ -105,7 +102,18 @@ fun AskQuestionScreen(
     var recognizedQuestion by remember { mutableStateOf<String?>(null) }
     var answerText by remember { mutableStateOf<String?>(null) }
     var isListening by remember { mutableStateOf(false) }
+    var isProcessingQuestion by remember { mutableStateOf(false) }
     var speechError by remember { mutableStateOf<String?>(null) }
+    var micAmplitude by remember { mutableFloatStateOf(0f) }
+
+    val assistantState = when {
+        speechError != null -> AssistantState.ERROR
+        isListening -> AssistantState.LISTENING
+        isProcessingQuestion -> AssistantState.PROCESSING
+        isSpeaking -> AssistantState.SPEAKING
+        answerText != null -> AssistantState.SUCCESS
+        else -> AssistantState.IDLE
+    }
 
     LaunchedEffect(Unit) {
         onAnnounceScreen()
@@ -115,12 +123,16 @@ fun AskQuestionScreen(
         if (query.isBlank()) return
         recognizedQuestion = query
         speechError = null
+        isProcessingQuestion = true
+
         if (onSubmitQuestion != null) {
             onSubmitQuestion(query) { answer ->
+                isProcessingQuestion = false
                 answerText = answer
             }
         } else {
             val answer = MockData.answerQuestion(query, contextContent, language.code)
+            isProcessingQuestion = false
             answerText = answer
             onSpeak(answer)
         }
@@ -130,6 +142,7 @@ fun AskQuestionScreen(
         onStopSpeech()
         speechError = null
         isListening = true
+        micAmplitude = 0f
         speechInputManager.startListening(language)
     }
 
@@ -146,6 +159,11 @@ fun AskQuestionScreen(
     }
 
     DisposableEffect(speechInputManager, language) {
+        speechInputManager.onRmsChanged = { rmsDb ->
+            // Normalize -2 dB to 10 dB into a 0f..1f range for the visual pulse
+            micAmplitude = ((rmsDb + 2f) / 12f).coerceIn(0f, 1f)
+        }
+
         speechInputManager.onStateChanged = { state ->
             when (state) {
                 is SpeechRecognitionState.Ready -> {
@@ -156,16 +174,19 @@ fun AskQuestionScreen(
                 }
                 is SpeechRecognitionState.Success -> {
                     isListening = false
+                    micAmplitude = 0f
                     speechError = null
                     submitQuestion(state.recognizedText)
                 }
                 is SpeechRecognitionState.Error -> {
                     isListening = false
+                    micAmplitude = 0f
                     speechError = state.message
                     onSpeak(state.message)
                 }
                 is SpeechRecognitionState.Idle -> {
                     isListening = false
+                    micAmplitude = 0f
                 }
             }
         }
@@ -187,60 +208,79 @@ fun AskQuestionScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp, vertical = 14.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Header
-            ScreenTitle(
-                title = strings.askQuestionTitle,
-                subtitle = strings.askQuestionScreenSubtitle,
-                onBackClick = onBackClick,
-                backContentDescription = strings.returnToPreviousScreen
-            )
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(BackgroundMidnightNavy)
+    ) {
+        AuroraBackground(
+            modifier = Modifier.fillMaxSize(),
+            primaryAlpha = 0.32f,
+            secondaryAlpha = 0.22f
+        )
 
-            if (!contextContent.isNullOrBlank()) {
-                StatusMessage(
-                    message = strings.activeContextMessage,
-                    level = StatusLevel.INFO,
-                    title = strings.activeContextTitle
-                )
-            }
-
-            // Central Voice Button Section
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = androidx.compose.ui.graphics.Color.Transparent
+        ) { innerPadding ->
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
-                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
-                    .padding(vertical = 24.dp, horizontal = 16.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = if (isListening) strings.listeningTitle else strings.tapToSpeak,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = TextWhite
+                // Header
+                ScreenTitle(
+                    title = strings.askQuestionTitle,
+                    subtitle = strings.askQuestionScreenSubtitle,
+                    onBackClick = onBackClick,
+                    backContentDescription = strings.returnToPreviousScreen
                 )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                if (!contextContent.isNullOrBlank()) {
+                    StatusMessage(
+                        message = strings.activeContextMessage,
+                        level = StatusLevel.INFO,
+                        title = strings.activeContextTitle
+                    )
+                }
 
-                // Microphone Button
-                Box(
-                    contentAlignment = Alignment.Center,
+                // Central Voice Assistant Orb Section
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .size(92.dp)
-                        .clip(CircleShape)
-                        .background(if (isListening) AlertError else ActionPrimaryBlue)
-                        .border(3.dp, BorderHighlight, CircleShape)
-                        .semantics {
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(22.dp))
+                        .padding(vertical = 22.dp, horizontal = 16.dp)
+                ) {
+                    Text(
+                        text = if (isListening) strings.listeningTitle else strings.tapToSpeak,
+                        style = MaterialTheme.typography.titleLarge,
+                        color = TextWhite
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    // Luminous interactive Assistant Orb reacting to speech and audio amplitude
+                    AssistantOrb(
+                        state = assistantState,
+                        amplitude = micAmplitude,
+                        size = 130.dp,
+                        onClick = {
+                            if (isListening) {
+                                speechInputManager.cancel()
+                                isListening = false
+                                micAmplitude = 0f
+                                onStopSpeech()
+                            } else {
+                                triggerVoiceInput()
+                            }
+                        },
+                        modifier = Modifier.semantics {
                             this.role = Role.Button
                             this.contentDescription = if (isListening) {
                                 strings.micListeningContentDescription
@@ -248,136 +288,119 @@ fun AskQuestionScreen(
                                 strings.micButtonContentDescription
                             }
                         }
-                ) {
-                    if (isListening) {
-                        CircularProgressIndicator(
-                            color = TextWhite,
-                            strokeWidth = 4.dp,
-                            modifier = Modifier.size(80.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = {
-                            if (isListening) {
-                                speechInputManager.cancel()
-                                isListening = false
-                                onStopSpeech()
-                            } else {
-                                triggerVoiceInput()
-                            }
-                        },
-                        modifier = Modifier.size(92.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Voice State Indicator Pill
+                    VoiceStateIndicator(
+                        state = assistantState,
+                        language = language
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = if (isListening) strings.listeningMicrophonePrompt else strings.touchToActivateVoice,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextLightGrey
+                    )
+                }
+
+                // Speech Error Banner
+                if (speechError != null) {
+                    StatusMessage(
+                        title = strings.errorPrefix.trimEnd(':', ' '),
+                        message = speechError ?: "",
+                        level = StatusLevel.ERROR
+                    )
+                }
+
+                // Results Section (Spoken Answer + Transcript)
+                if (answerText != null) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = if (isListening) Icons.Default.MicOff else Icons.Default.Mic,
-                            contentDescription = null,
-                            tint = TextWhite,
-                            modifier = Modifier.size(44.dp)
+                        if (recognizedQuestion != null) {
+                            StatusMessage(
+                                message = "\"$recognizedQuestion\"",
+                                level = StatusLevel.INFO,
+                                title = strings.questionAskedTitle
+                            )
+                        }
+
+                        ResultCard(
+                            title = strings.spokenAnswerTitle,
+                            content = answerText ?: ""
+                        )
+
+                        SpeechControls(
+                            isSpeaking = isSpeaking,
+                            onReadAloud = { onSpeak(answerText ?: "") },
+                            onStopSpeech = onStopSpeech,
+                            readAloudText = strings.readAnswerAloud
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
-
-                Text(
-                    text = if (isListening) strings.listeningMicrophonePrompt else strings.touchToActivateVoice,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextLightGrey
-                )
-            }
-
-            // Speech Error Banner
-            if (speechError != null) {
-                StatusMessage(
-                    title = strings.errorPrefix.trimEnd(':', ' '),
-                    message = speechError ?: "",
-                    level = StatusLevel.ERROR
-                )
-            }
-
-            // Text Input Fallback
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(SurfaceDarkCharcoal, RoundedCornerShape(16.dp))
-                    .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = strings.orTypeQuestion,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextWhite
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                OutlinedTextField(
-                    value = typedQuestion,
-                    onValueChange = { typedQuestion = it },
-                    label = { Text(strings.enterQuestionHint, color = TextLightGrey) },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    keyboardActions = KeyboardActions(onSend = {
-                        keyboardController?.hide()
-                        submitQuestion(typedQuestion)
-                    }),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = TextWhite,
-                        unfocusedTextColor = TextWhite,
-                        focusedBorderColor = ActionPrimaryBlue,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedLabelColor = ActionPrimaryBlue,
-                        unfocusedLabelColor = TextLightGrey,
-                        cursorColor = ActionPrimaryBlue
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                OptiScanButton(
-                    text = strings.sendQuestion,
-                    onClick = {
-                        keyboardController?.hide()
-                        submitQuestion(typedQuestion)
-                    },
-                    variant = ButtonVariant.PRIMARY,
-                    icon = Icons.AutoMirrored.Filled.Send,
-                    enabled = typedQuestion.isNotBlank(),
-                    contentDesc = "${strings.sendQuestion} button",
-                    minHeight = 52
-                )
-            }
-
-            // Results Section
-            if (answerText != null) {
+                // Text Input Fallback Section
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(SurfaceCard)
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(18.dp))
+                        .padding(16.dp)
                 ) {
-                    if (recognizedQuestion != null) {
-                        StatusMessage(
-                            message = "\"$recognizedQuestion\"",
-                            level = StatusLevel.INFO,
-                            title = strings.questionAskedTitle
-                        )
-                    }
-
-                    ResultCard(
-                        title = strings.spokenAnswerTitle,
-                        content = answerText ?: ""
+                    Text(
+                        text = strings.orTypeQuestion,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextWhite
                     )
 
-                    SpeechControls(
-                        isSpeaking = isSpeaking,
-                        onReadAloud = { onSpeak(answerText ?: "") },
-                        onStopSpeech = onStopSpeech,
-                        readAloudText = strings.readAnswerAloud
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = typedQuestion,
+                        onValueChange = { typedQuestion = it },
+                        label = { Text(strings.enterQuestionHint, color = TextLightGrey) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = {
+                            keyboardController?.hide()
+                            submitQuestion(typedQuestion)
+                        }),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = TextWhite,
+                            unfocusedTextColor = TextWhite,
+                            focusedBorderColor = ActionPrimaryBlue,
+                            unfocusedBorderColor = BorderSubtle,
+                            focusedLabelColor = ActionPrimaryBlue,
+                            unfocusedLabelColor = TextLightGrey,
+                            cursorColor = ActionPrimaryBlue
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OptiScanButton(
+                        text = strings.sendQuestion,
+                        onClick = {
+                            keyboardController?.hide()
+                            submitQuestion(typedQuestion)
+                        },
+                        variant = ButtonVariant.AURORA,
+                        icon = Icons.AutoMirrored.Filled.Send,
+                        enabled = typedQuestion.isNotBlank(),
+                        contentDesc = "${strings.sendQuestion} button",
+                        minHeight = 54
                     )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(20.dp))
+            }
         }
     }
 }

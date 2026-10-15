@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.optiscan.app.data.mock.MockData
@@ -27,7 +26,7 @@ import com.optiscan.app.ui.components.SpeechControls
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
 import com.optiscan.app.ui.localization.AppStrings
-import com.optiscan.app.ui.theme.BackgroundNearBlack
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 
 /**
  * Screen G: Image Description Results
@@ -53,7 +52,7 @@ fun DescriptionResultScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
+        containerColor = BackgroundMidnightNavy
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -84,7 +83,7 @@ fun DescriptionResultScreen(
                 OptiScanButton(
                     text = strings.retakePhoto,
                     onClick = onCaptureAnother,
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.Default.CameraAlt,
                     contentDesc = "${strings.retakePhoto} button",
                     bypassTripleTap = true
@@ -126,7 +125,7 @@ fun DescriptionResultScreen(
                 OptiScanButton(
                     text = strings.askQuestionAboutScene,
                     onClick = { onAskQuestion(description) },
-                    variant = ButtonVariant.PRIMARY,
+                    variant = ButtonVariant.AURORA,
                     icon = Icons.AutoMirrored.Filled.HelpOutline,
                     contentDesc = "${strings.askQuestionAboutScene} button"
                 )

@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import com.optiscan.app.ui.components.rememberAccessibleTapHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -38,8 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -51,18 +48,21 @@ import com.optiscan.app.ui.components.CameraPreviewView
 import com.optiscan.app.ui.components.OptiScanButton
 import com.optiscan.app.ui.components.StatusLevel
 import com.optiscan.app.ui.components.StatusMessage
+import com.optiscan.app.ui.components.rememberAccessibleTapHandler
 import com.optiscan.app.ui.theme.ActionPrimaryBlue
-import com.optiscan.app.ui.theme.BackgroundNearBlack
+import com.optiscan.app.ui.theme.AuroraCyan
+import com.optiscan.app.ui.theme.BackgroundMidnightNavy
 import com.optiscan.app.ui.theme.BorderHighlight
 import com.optiscan.app.ui.theme.BorderSubtle
 import com.optiscan.app.ui.theme.SurfaceCard
-import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
+import com.optiscan.app.ui.theme.SurfaceCardElevated
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
 /**
  * Screen C: Camera
- * Full-screen viewfinder with live CameraX or fallback simulated state, flash toggle, and capture action.
+ * Full-screen accessible viewfinder with OptiScan Aurora framing, live CameraX integration,
+ * flash toggle, and prominent capture trigger.
  */
 @Composable
 fun CameraScreen(
@@ -85,7 +85,7 @@ fun CameraScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = BackgroundNearBlack
+        containerColor = BackgroundMidnightNavy
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -100,7 +100,7 @@ fun CameraScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Back Button
+                // Circular Halo Back Button
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.semantics {
@@ -108,17 +108,26 @@ fun CameraScreen(
                         this.contentDescription = strings.returnToPreviousScreen
                     }
                 ) {
-                    IconButton(
-                        onClick = onBackClick,
-                        modifier = Modifier.size(52.dp)
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .background(SurfaceCard, CircleShape)
+                            .border(1.dp, BorderSubtle, CircleShape)
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = null,
-                            tint = TextWhite,
-                            modifier = Modifier.size(28.dp)
-                        )
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                tint = TextWhite,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = if (language == com.optiscan.app.navigation.AppLanguage.HINDI) "होम" else "Home",
                         style = MaterialTheme.typography.titleMedium,
@@ -130,7 +139,7 @@ fun CameraScreen(
                 OptiScanButton(
                     text = if (flashEnabled) strings.flashOn else strings.flashOff,
                     onClick = { flashEnabled = !flashEnabled },
-                    variant = if (flashEnabled) ButtonVariant.PRIMARY else ButtonVariant.SURFACE,
+                    variant = if (flashEnabled) ButtonVariant.AURORA else ButtonVariant.SURFACE,
                     icon = if (flashEnabled) Icons.Default.FlashOn else Icons.Default.FlashOff,
                     contentDesc = if (flashEnabled) "${strings.flashOn}. Tap to toggle." else "${strings.flashOff}. Tap to toggle.",
                     minHeight = 48,
@@ -144,8 +153,9 @@ fun CameraScreen(
                 Text(
                     text = strings.taskTitle(task),
                     style = MaterialTheme.typography.headlineMedium,
-                    color = ActionPrimaryBlue
+                    color = AuroraCyan
                 )
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (language == com.optiscan.app.navigation.AppLanguage.HINDI) {
                         "कैमरा वस्तु की ओर करें। वॉल्यूम बटन दबाएं या कैप्चर पर टैप करें।"
@@ -174,16 +184,16 @@ fun CameraScreen(
                 }
             )
 
-            // Viewfinder Area (Full-screen accessible tap target)
+            // Viewfinder Area (Full-screen accessible tap target with luminous border)
             Box(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(vertical = 12.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(SurfaceDarkCharcoal)
-                    .border(2.dp, BorderSubtle, RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(SurfaceCardElevated)
+                    .border(1.5.dp, BorderHighlight.copy(alpha = 0.6f), RoundedCornerShape(20.dp))
                     .clickable(
                         role = Role.Button,
                         onClickLabel = if (hasCameraPermission) "Capture photo from viewfinder" else strings.grantCameraPermission,
@@ -219,7 +229,7 @@ fun CameraScreen(
                         OptiScanButton(
                             text = strings.grantCameraPermission,
                             onClick = onRequestCameraPermission,
-                            variant = ButtonVariant.PRIMARY,
+                            variant = ButtonVariant.AURORA,
                             contentDesc = "${strings.grantCameraPermission} button",
                             bypassTripleTap = true
                         )
@@ -238,7 +248,7 @@ fun CameraScreen(
                     OptiScanButton(
                         text = strings.capturePhoto,
                         onClick = onCaptureClicked,
-                        variant = ButtonVariant.PRIMARY,
+                        variant = ButtonVariant.AURORA,
                         icon = Icons.Default.Camera,
                         contentDesc = "${strings.capturePhoto} button",
                         minHeight = 72
@@ -247,7 +257,7 @@ fun CameraScreen(
                     OptiScanButton(
                         text = strings.grantCameraPermission,
                         onClick = onRequestCameraPermission,
-                        variant = ButtonVariant.PRIMARY,
+                        variant = ButtonVariant.AURORA,
                         contentDesc = "${strings.grantCameraPermission} button",
                         minHeight = 72,
                         bypassTripleTap = true

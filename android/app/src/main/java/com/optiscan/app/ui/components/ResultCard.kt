@@ -24,8 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.optiscan.app.ui.theme.AuroraCyan
 import com.optiscan.app.ui.theme.BorderSubtle
-import com.optiscan.app.ui.theme.SurfaceDarkCharcoal
+import com.optiscan.app.ui.theme.SurfaceCard
 import com.optiscan.app.ui.theme.TextLightGrey
 import com.optiscan.app.ui.theme.TextWhite
 
@@ -35,6 +36,7 @@ import androidx.compose.ui.semantics.liveRegion
 
 /**
  * Result display card showing extracted OCR text or scene descriptions.
+ * Styled with OptiScan Aurora deep navy and luminous accents.
  */
 @Composable
 fun ResultCard(
@@ -45,9 +47,9 @@ fun ResultCard(
     onCopyClick: (() -> Unit)? = null
 ) {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SurfaceDarkCharcoal),
-        border = BorderStroke(1.5.dp, BorderSubtle),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = SurfaceCard),
+        border = BorderStroke(1.dp, BorderSubtle),
         modifier = modifier
             .fillMaxWidth()
             .semantics {
@@ -55,7 +57,7 @@ fun ResultCard(
             }
     ) {
         Column(
-            modifier = Modifier.padding(18.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -64,7 +66,7 @@ fun ResultCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = AuroraCyan,
                     modifier = Modifier
                         .weight(1f)
                         .semantics { heading() }

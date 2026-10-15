@@ -2,6 +2,7 @@ package com.optiscan.app.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,8 +65,9 @@ fun StatusMessage(
         verticalAlignment = Alignment.Top,
         modifier = modifier
             .fillMaxWidth()
-            .background(SurfaceDarkCharcoal, RoundedCornerShape(12.dp))
-            .padding(14.dp)
+            .background(SurfaceDarkCharcoal, RoundedCornerShape(14.dp))
+            .border(BorderStroke(1.dp, color.copy(alpha = 0.4f)), RoundedCornerShape(14.dp))
+            .padding(16.dp)
             .semantics {
                 this.contentDescription = accessibleText
             }
