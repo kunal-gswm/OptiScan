@@ -163,35 +163,37 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 ---
 
-### 4.2. Android Client Networking & Configuration
+### 4.2. Android Client Networking & Local Development (No Hosted Server Required)
 
-The Android application supports seamless switching between local development, physical device testing, and production hosted environments:
+OptiScan does not assume or require a hosted backend server for testing and development. The app supports local backend execution, USB reverse forwarding, LAN Wi-Fi testing, and independent on-device OCR:
 
-#### Option A: In-App Server Settings (Universal for Any Device or Build)
-- Open the OptiScan app.
-- Tap the **Settings** gear icon in the top right.
-- Under **Backend Server Connection**, enter your backend URL (e.g. `https://api.yourdomain.com/` or `http://192.168.1.15:8000/`).
-- Tap **Save Server URL** (persisted securely across app restarts).
-- Tap **Test Connection** to immediately verify live end-to-end connectivity with spoken audio and visual status feedback.
+#### Local Development Options (Debug Builds)
+1. **Android Studio Emulator**:
+   - The Android Emulator automatically routes `http://10.0.2.2:8000/` to `localhost:8000` on your development computer.
+   - Debug builds default to `http://10.0.2.2:8000/` on emulators automatically.
+2. **Physical Android Device via USB (Recommended for Low Latency)**:
+   - Connect your Android phone to your computer via USB with **USB Debugging** enabled.
+   - Run the ADB reverse port forwarding command in your computer's terminal:
+     ```bash
+     adb reverse tcp:8000 tcp:8000
+     ```
+   - In OptiScan **Settings** → **Backend Server Connection**, tap the **USB Reverse** preset button (`http://127.0.0.1:8000/`) and tap **Save Server URL**.
+3. **Physical Android Device via Wi-Fi LAN**:
+   - Ensure your phone and development computer are on the same Wi-Fi network.
+   - Find your computer's LAN IP (e.g. `ipconfig` on Windows or `ifconfig` on Linux/macOS, such as `192.168.1.15`).
+   - In OptiScan **Settings**, enter `http://<YOUR_COMPUTER_LAN_IP>:8000/` (e.g. `http://192.168.1.15:8000/`) and tap **Save Server URL**.
+   - Note: Never hardcode a guessed LAN IP in code; use the Settings input.
 
-#### Option B: Android Studio Emulator (Debug Builds)
-- The Android Emulator automatically routes `10.0.2.2` to `localhost` on the host workstation.
-- In **Debug** builds, OptiScan defaults to `http://10.0.2.2:8000/` automatically. No manual setup is required.
+#### On-Device Features vs. Cloud AI Backend
+- **On-Device Text Reading (ML Kit OCR)**: Operates **100% independently on-device**. No backend or internet connection is required to read printed signs, medicine boxes, or documents.
+- **AI Object & Scene Description**: Requires a connected backend with Gemini vision integration. If no backend is connected or reachable, OptiScan provides a clear, honest announcement:
+  > *"AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."*
+- **Offline Mock Mode**: Provides simulated responses for testing UI and screen-reader accessibility without running a backend. All simulated responses are explicitly marked (e.g., `[Simulated Description - Mock Mode]`, `[Simulated Label - Mock Mode]`) so simulated data is never presented as actual camera analysis. Live requests never automatically fall back to canned mock data.
 
-#### Option C: Physical Android Device via USB Cable (Debug Builds)
-- Connect your Android phone to your computer via USB with **USB Debugging** enabled.
-- Run the ADB reverse port forwarding command in your terminal:
-  ```powershell
-  adb reverse tcp:8000 tcp:8000
-  ```
-- This forwards port 8000 on the physical phone directly to port 8000 on your host computer.
-- In the app Settings, configure the URL as `http://127.0.0.1:8000/`.
-
-#### Option D: Production Hosted Backend (Release Builds)
-- **Release builds** require a hosted HTTPS endpoint (e.g. Google Cloud Run, AWS, Render, or VPS with SSL).
-- Release builds enforce Android's network security policy prohibiting cleartext traffic and rejecting unconfigured loopback addresses.
-- If no backend URL is configured, OptiScan cleanly guides the user to set a server URL in Settings or enable Offline Mock Mode, avoiding silent crashes.
-- See [docs/deployment.md](docs/deployment.md) for step-by-step production hosting and container deployment guides.
+#### Production Configuration (Release Builds)
+- **Release builds** require an explicit hosted HTTPS endpoint (`https://...`).
+- Android Network Security Config enforces HTTPS in Release builds (`android:networkSecurityConfig`), preventing cleartext HTTP transmission in production while scoping cleartext HTTP strictly to local development in Debug builds.
+- If no hosted backend is configured in Release, the Settings screen clearly displays **"No hosted backend configured"** with guidance.
 
 ---
 
@@ -319,12 +321,13 @@ OptiScan is designed for graceful degradation, ensuring users are never left str
 
 | Feature | Online (Cloud Backend Connected) | Offline (No Network / Airplane Mode) |
 |---|---|---|
-| **Text Reading (Read Text)** | High-accuracy scene text recognition with AI reasoning | **100% On-Device:** Google ML Kit OCR extracts printed text and speaks it aloud |
-| **Scene Description** | Gemini 2.5 Flash spatial scene analysis and hazard detection | **100% On-Device Option:** Local Qwen2-VL vision model (or speaks clean notice when cloud-only mode is active) |
-| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | **100% On-Device Option:** Local Qwen2-VL conversational voice assistant |
+| **Text Reading (Read Text)** | High-accuracy scene text recognition with AI reasoning | **100% On-Device:** Google ML Kit OCR extracts printed text and speaks it aloud independently without server |
+| **Object & Scene Description** | Gemini 2.5 Flash spatial scene analysis and hazard detection | **100% On-Device Option:** Local Qwen2-VL vision model (or speaks clean notice when cloud-only mode is active) |
+| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | **100% On-Device Option:** Local Qwen2-VL conversational voice assistant (or requires connected backend) |
+| **Guided Task Mode** | Interactive physical task guidance (secondary feature) | Requires connected backend or Offline Mock Mode |
 | **Voice Reading (TTS)** | On-device Android `TextToSpeech` (English & Hindi) | **100% On-Device:** Android TTS functions without internet |
 | **Voice Input (Speech)** | Android SpeechRecognizer with network cloud models | Typed text input fallback works completely offline |
-| **Offline Mock Mode** | N/A | Full deterministic offline simulation clearly marked with `[Offline Mock]` |
+| **Offline Mock Mode** | N/A | Full deterministic offline simulation clearly marked with `[Simulated Description - Mock Mode]`, `[Simulated Label - Mock Mode]`, etc. |
 
 ---
 
@@ -334,31 +337,33 @@ Every component is validated with automated unit and regression suites:
 
 ```text
 Backend pytest Suite:
-============================== 55 passed in 2.39s ==============================
+============================== 61 passed in 3.15s ==============================
 - Health check endpoints (/health)
 - Multipart image upload validation (JPEG, PNG, WEBP, MPO)
 - Sharpness, blur, underexposure, and decompression bomb detection
 - Gemini Vision provider payload construction & error sanitization
 - Hindi language parameter routing and Devanagari prompting
 - Medical safety guidelines enforcement in system prompt
-- Explicit [Offline Mock] branding in mock mode
+- Guided Task state machine and physical safety safeguards
+- Explicit [Simulated ... - Mock Mode] branding in mock mode
 
 Android Gradle Test Suite:
-============================== 37 passed in 4.5s ==============================
 - Model JSON serialization/deserialization contracts & API validation
-- NetworkConfig URL validation, normalization, and release security policies
+- NetworkConfig URL validation, local address detection, and release security policies
 - Preferences persistence (Language, Triple-Tap, Custom Backend URL, On-Device AI, Diagnostics)
 - ScanRepository dynamic URL updates and backend connection testing
 - On-Device Qwen model manager state machine, storage check & resilient DNS
 - Multi-turn conversation turn context & image retention
-- MainViewModel state transitions, offline OCR fallback, and error handling
+- MainViewModel state transitions, honest unconfigured backend messaging
+- On-device ML Kit OCR independent execution without backend
+- OcrPipelineRegressionTest: multi-scale OCR, prominent word preservation, spatial sorting, deduplication
+- Prevention of accidental mock fallback upon live request failures
 - Navigation speech stoppage on screen transitions
-- Honest visual perception (never fabricating canned mock answers in live mode)
 - Bilingual AppStrings coverage (English & Hindi)
 
 Android Build Verification:
-- assembleDebug:   SUCCESSFUL (Installable debug APK)
-- assembleRelease: SUCCESSFUL (Signed release APK ready for deployment)
+- assembleDebug:   SUCCESSFUL (Installable debug APK: 19.7 MB)
+- assembleRelease: SUCCESSFUL (Signed release APK: 13.4 MB)
 ```
 
 ---

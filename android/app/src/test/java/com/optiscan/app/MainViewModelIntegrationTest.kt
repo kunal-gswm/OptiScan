@@ -207,14 +207,14 @@ class MainViewModelIntegrationTest {
 
     @Test
     fun testNetworkFailureSetsActionableErrorAndAllowsRetry() = runTest(testDispatcher) {
-        val networkErrorMessage = "Could not connect to OptiScan backend. Please verify your connection."
-        fakeRepository.analyzeResult = Result.failure(Exception(networkErrorMessage))
+        val serverErrorMessage = "Backend server error (500). Please try again later."
+        fakeRepository.analyzeResult = Result.failure(Exception(serverErrorMessage))
 
         viewModel.analyzeCapturedImage(ScanTask.DESCRIBE_SURROUNDINGS, sampleBytes)
         advanceUntilIdle()
 
         assertFalse(viewModel.isAnalyzing.value)
-        assertEquals(networkErrorMessage, viewModel.analysisError.value)
+        assertEquals(serverErrorMessage, viewModel.analysisError.value)
         assertTrue(viewModel.currentScreen.value is Screen.Welcome)
 
         // Retry succeeds
@@ -657,6 +657,111 @@ class MainViewModelIntegrationTest {
 
         assertEquals("hi", fakeRepository.capturedLanguage)
         assertEquals(TaskTypes.GUIDED_TASK, fakeRepository.capturedTask)
+    }
+
+    @Test
+    fun testDescribeSurroundingsWhenBackendUnconfiguredShowsHonestUnavailableMessage() = runTest(testDispatcher) {
+        fakeRepository.configured = false
+        val expectedMessage = "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."
+
+        viewModel.analyzeCapturedImage(ScanTask.DESCRIBE_SURROUNDINGS, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAnalyzing.value)
+        assertEquals(expectedMessage, viewModel.analysisError.value)
+        assertEquals(0, fakeRepository.callCount)
+    }
+
+    @Test
+    fun testDescribeSurroundingsHindiWhenBackendUnconfiguredShowsHonestUnavailableMessage() = runTest(testDispatcher) {
+        viewModel.updateSettings(AppSettings(language = AppLanguage.HINDI))
+        fakeRepository.configured = false
+        val expectedMessage = "AI वस्तु विवरण अनुपलब्ध है क्योंकि कोई बैकएंड कनेक्ट नहीं है। लाइव AI विश्लेषण का उपयोग करने के लिए स्थानीय बैकएंड से कनेक्ट करें।"
+
+        viewModel.analyzeCapturedImage(ScanTask.DESCRIBE_SURROUNDINGS, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAnalyzing.value)
+        assertEquals(expectedMessage, viewModel.analysisError.value)
+        assertEquals(0, fakeRepository.callCount)
+    }
+
+    @Test
+    fun testReadTextWhenBackendUnconfiguredRunsOnDeviceOcrIndependently() = runTest(testDispatcher) {
+        fakeRepository.configured = false
+        val dummyBitmap = org.mockito.Mockito.mock(Bitmap::class.java)
+        viewModel.setCapturedBitmap(dummyBitmap)
+        fakeRepository.onDeviceOcrResult = Result.success("Aspirin 81mg - Heart Health")
+
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAnalyzing.value)
+        assertNull(viewModel.analysisError.value)
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue("Should navigate to ReadTextResult without backend", currentScreen is Screen.ReadTextResult)
+        val resultScreen = currentScreen as Screen.ReadTextResult
+        assertEquals("Aspirin 81mg - Heart Health", resultScreen.text)
+        assertFalse("On-device OCR is not live cloud result", resultScreen.isLiveResult)
+        assertEquals(0, fakeRepository.callCount)
+    }
+
+    @Test
+    fun testReadTextNoTextDetectedWhenBackendUnconfigured() = runTest(testDispatcher) {
+        fakeRepository.configured = false
+        val dummyBitmap = org.mockito.Mockito.mock(Bitmap::class.java)
+        viewModel.setCapturedBitmap(dummyBitmap)
+        fakeRepository.onDeviceOcrResult = Result.success("")
+
+        viewModel.analyzeCapturedImage(ScanTask.READ_TEXT, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAnalyzing.value)
+        val currentScreen = viewModel.currentScreen.value
+        assertTrue(currentScreen is Screen.ReadTextResult)
+        assertEquals("No printed text detected in the image.", (currentScreen as Screen.ReadTextResult).text)
+    }
+
+    @Test
+    fun testLiveNetworkErrorDoesNotFallBackToMockMode() = runTest(testDispatcher) {
+        fakeRepository.configured = true
+        fakeRepository.analyzeResult = Result.failure(java.io.IOException("Connection refused"))
+
+        viewModel.analyzeCapturedImage(ScanTask.DESCRIBE_SURROUNDINGS, sampleBytes)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.isAnalyzing.value)
+        assertEquals(
+            "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis.",
+            viewModel.analysisError.value
+        )
+        assertFalse("Must never transition to DescriptionResult with mock content on live failure", viewModel.currentScreen.value is Screen.DescriptionResult)
+    }
+
+    @Test
+    fun testAskQuestionWhenBackendUnconfiguredReturnsUnavailableMessage() = runTest(testDispatcher) {
+        fakeRepository.configured = false
+        viewModel.setCapturedImage(null, sampleBytes)
+
+        var receivedAnswer: String? = null
+        viewModel.askQuestion("What is in front of me?", null) { answer ->
+            receivedAnswer = answer
+        }
+
+        assertEquals(
+            "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis.",
+            receivedAnswer
+        )
+    }
+
+    @Test
+    fun testLocalBackendUrlUpdateAndHealthTest() = runTest(testDispatcher) {
+        viewModel.testBackendConnection("http://10.0.2.2:8000/") { success ->
+            assertTrue(success)
+        }
+        advanceUntilIdle()
+
+        assertEquals("http://10.0.2.2:8000/", fakeRepository.getBaseUrl())
     }
 }
 

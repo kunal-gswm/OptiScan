@@ -114,4 +114,34 @@ class ModelContractTest {
         assertEquals("https://api.optiscan.ai/", com.optiscan.app.utils.NetworkConfig.normalizeUrl("https://api.optiscan.ai/"))
         assertEquals("", com.optiscan.app.utils.NetworkConfig.normalizeUrl("   "))
     }
+
+    @Test
+    fun testNetworkConfigLocalAddressDetection() {
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isLocalAddress("http://10.0.2.2:8000/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isLocalAddress("http://127.0.0.1:8000/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isLocalAddress("http://localhost:8000/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isLocalAddress("http://192.168.1.50:8000/"))
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isLocalAddress("http://10.0.0.12:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isLocalAddress("https://api.optiscan.ai/"))
+    }
+
+    @Test
+    fun testNetworkConfigHostedUrlRequiresHttps() {
+        // Hosted production URLs must require HTTPS and not be localhost/loopback
+        assertTrue(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("https://api.optiscan.ai/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://unencrypted-domain.com/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://192.168.1.100:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl("http://10.0.2.2:8000/"))
+        assertFalse(com.optiscan.app.utils.NetworkConfig.isValidHostedUrl(""))
+    }
+
+    @Test
+    fun testMockDataSimulatedMarkersPresent() {
+        assertTrue(com.optiscan.app.data.mock.MockData.SAMPLE_PRODUCT_LABEL.startsWith("[Simulated Label - Mock Mode]"))
+        assertTrue(com.optiscan.app.data.mock.MockData.SAMPLE_SCENE_DESCRIPTION.startsWith("[Simulated Description - Mock Mode]"))
+        val enAnswer = com.optiscan.app.data.mock.MockData.answerQuestion("where is the door", language = "en")
+        assertTrue(enAnswer.startsWith("[Simulated Answer - Mock Mode]"))
+        val hiAnswer = com.optiscan.app.data.mock.MockData.answerQuestion("दरवाजा कहाँ है", language = "hi")
+        assertTrue(hiAnswer.startsWith("[अनुकरण उत्तर - मॉक मोड]"))
+    }
 }

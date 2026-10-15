@@ -228,7 +228,8 @@ class OnDeviceInferenceEngine(private val context: Context) {
         val hasImage = imageBitmap != null
         val queryLower = userQuery.lowercase()
 
-        return when {
+        val prefix = if (isHindi) "[सिम्युलेटेड डेमो] " else "[Simulated Demo] "
+        val body = when {
             // Image description queries
             hasImage && (queryLower.contains("what") || queryLower.contains("describe") ||
                          queryLower.contains("see") || queryLower.contains("क्या") ||
@@ -285,6 +286,7 @@ class OnDeviceInferenceEngine(private val context: Context) {
                 }
             }
         }
+        return prefix + body
     }
 
     /**

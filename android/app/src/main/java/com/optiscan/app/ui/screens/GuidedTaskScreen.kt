@@ -126,14 +126,14 @@ fun GuidedTaskScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Action 1: Next Step (or Finish if complete)
+            // Action 1: Scan Workspace for Next Step
             if (!isTaskComplete) {
                 OptiScanButton(
-                    text = strings.nextStep,
+                    text = strings.scanWorkspaceForNextStep,
                     onClick = onNextStep,
                     variant = ButtonVariant.PRIMARY,
                     icon = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDesc = "${strings.nextStep}. Advance to next action."
+                    contentDesc = strings.scanWorkspaceNextStepContentDesc
                 )
             }
 

@@ -298,8 +298,8 @@ class PreferencesAndSpeechTest {
         val enAnswer = MockData.answerQuestion("Is the path clear?", null, "en")
         val hiAnswer = MockData.answerQuestion("क्या रास्ता साफ है?", null, "hi")
 
-        assertTrue("English mock answer must have [Offline Mock] prefix", enAnswer.startsWith("[Offline Mock]"))
-        assertTrue("Hindi mock answer must have [ऑफलाइन मॉक] prefix", hiAnswer.startsWith("[ऑफलाइन मॉक]"))
+        assertTrue("English mock answer must have [Simulated Answer - Mock Mode] prefix", enAnswer.startsWith("[Simulated Answer - Mock Mode]"))
+        assertTrue("Hindi mock answer must have [अनुकरण उत्तर - मॉक मोड] prefix", hiAnswer.startsWith("[अनुकरण उत्तर - मॉक मोड]"))
     }
 
     @Test

@@ -244,11 +244,29 @@ fun OnDeviceConversationScreen(
         ) {
             // Header
             ScreenTitle(
-                title = if (isHindi) "ऑन-डिवाइस AI" else "On-Device AI",
-                subtitle = if (isHindi) "Qwen2-VL • पूरी तरह ऑफलाइन • निजी" else "Qwen2-VL • Fully Offline • Private",
+                title = if (isHindi) "[प्रोटोटाइप] ऑन-डिवाइस AI" else "[Prototype] On-Device AI",
+                subtitle = if (isHindi) "सिम्युलेटेड डेमो • ऑफलाइन प्रोटोटाइप" else "Simulated Demo • Offline Prototype",
                 onBackClick = onBackClick,
                 backContentDescription = if (isHindi) "पिछली स्क्रीन पर वापस जाएं" else "Return to previous screen"
             )
+
+            // Prototype / Simulated Demo Notice Banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2D2000), RoundedCornerShape(8.dp))
+                    .border(1.dp, AlertWarning, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = if (isHindi)
+                        "⚠️ प्रोटोटाइप डेमो: Qwen2-VL मॉडल वेट्स स्थानीय रूप से बंडल नहीं हैं। यह सुविधा सिमुलेशन मोड में चल रही है।"
+                    else
+                        "⚠️ Prototype Demo: Real on-device Qwen2-VL model weights are not bundled (~1.8 GB). Operating in simulated prototype mode.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = AlertWarning
+                )
+            }
 
             // Device warning if RAM is low
             deviceInfo?.let { info ->
@@ -654,8 +672,8 @@ private fun PrivacyBadge(isHindi: Boolean) {
         )
         Spacer(Modifier.width(6.dp))
         Text(
-            text = if (isHindi) "🔒 100% ऑन-डिवाइस • कोई डेटा अपलोड नहीं"
-            else "🔒 100% On-Device • No data ever leaves your phone",
+            text = if (isHindi) "🔒 100% ऑन-डिवाइस प्रोटोटाइप • कोई डेटा अपलोड नहीं"
+            else "🔒 100% On-Device Prototype • No data ever leaves your phone",
             style = MaterialTheme.typography.bodySmall,
             color = ActionSecondaryGreen
         )
@@ -670,7 +688,7 @@ private fun ConversationBubble(turn: ConversationTurn, isHindi: Boolean) {
     val alignment = if (isUser) Alignment.End else Alignment.Start
 
     Column(
-        horizontalAlignment = if (isUser) Alignment.End else Alignment.Start,
+        horizontalAlignment = alignment,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(

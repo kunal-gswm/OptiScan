@@ -111,9 +111,9 @@ class ScanRepositoryImpl(
             val mockResponse = when (task) {
                 TaskTypes.DESCRIBE_IMAGE -> {
                     val mockAnswer = if (isHindi) {
-                        "[ऑफलाइन मॉक] दोनों तरफ दरवाजों वाला एक सीधा और साफ इनडोर गलियारा। आगे का रास्ता पूरी तरह खुला और सुरक्षित है।"
+                        "[अनुकरण विवरण - मॉक मोड] दोनों तरफ दरवाजों वाला एक सीधा और साफ इनडोर गलियारा। आगे का रास्ता पूरी तरह खुला और सुरक्षित है।"
                     } else {
-                        "[Offline Mock] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
+                        "[Simulated Description - Mock Mode] A clear indoor hallway with doors on both sides. Straight ahead is unobstructed."
                     }
                     AnalysisResponse(
                         status = StatusTypes.SUCCESS,
@@ -125,9 +125,9 @@ class ScanRepositoryImpl(
                 }
                 TaskTypes.READ_TEXT -> {
                     val mockAnswer = if (isHindi) {
-                        "[ऑफलाइन मॉक] ROOM 302 - ACCESSIBLE ENTRANCE"
+                        "[अनुकरण लेबल - मॉक मोड] ROOM 302 - ACCESSIBLE ENTRANCE"
                     } else {
-                        "[Offline Mock] ROOM 302 - ACCESSIBLE ENTRANCE"
+                        "[Simulated Label - Mock Mode] ROOM 302 - ACCESSIBLE ENTRANCE"
                     }
                     AnalysisResponse(
                         status = StatusTypes.SUCCESS,
@@ -236,10 +236,19 @@ class ScanRepositoryImpl(
 
         // Release/production check: verify that a valid server URL is configured
         if (!isConfigured()) {
-            val unconfiguredMsg = if (language.equals("hi", ignoreCase = true)) {
-                "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।"
+            val isHindi = language.equals("hi", ignoreCase = true)
+            val unconfiguredMsg = if (isHindi) {
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI वस्तु विवरण अनुपलब्ध है क्योंकि कोई बैकएंड कनेक्ट नहीं है। लाइव AI विश्लेषण का उपयोग करने के लिए स्थानीय बैकएंड से कनेक्ट करें।"
+                } else {
+                    "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।"
+                }
             } else {
-                "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode."
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."
+                } else {
+                    "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode."
+                }
             }
             return@withContext Result.failure(IllegalStateException(unconfiguredMsg))
         }
@@ -289,13 +298,36 @@ class ScanRepositoryImpl(
             }
         } catch (e: SocketTimeoutException) {
             Log.e(tag, "Connection timed out", e)
-            Result.failure(Exception("Connection to AI backend timed out. Please check your network and try again.", e))
+            val isHindi = language.equals("hi", ignoreCase = true)
+            val timeoutMsg = if (isHindi) {
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI वस्तु विवरण अनुपलब्ध है क्योंकि कोई बैकएंड कनेक्ट नहीं है। लाइव AI विश्लेषण का उपयोग करने के लिए स्थानीय बैकएंड से कनेक्ट करें।"
+                } else {
+                    "AI बैकएंड से कनेक्शन का समय समाप्त हो गया। कृपया अपना नेटवर्क जांचें।"
+                }
+            } else {
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."
+                } else {
+                    "Connection to AI backend timed out. Please check your network and try again."
+                }
+            }
+            Result.failure(Exception(timeoutMsg, e))
         } catch (e: IOException) {
             Log.e(tag, "Network I/O failure", e)
-            val connMsg = if (language.equals("hi", ignoreCase = true)) {
-                "OptiScan बैकएंड से कनेक्ट नहीं हो सका। कृपया अपना नेटवर्क कनेक्शन जांचें या सेटिंग्स में ऑफलाइन मॉक मोड चालू करें।"
+            val isHindi = language.equals("hi", ignoreCase = true)
+            val connMsg = if (isHindi) {
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI वस्तु विवरण अनुपलब्ध है क्योंकि कोई बैकएंड कनेक्ट नहीं है। लाइव AI विश्लेषण का उपयोग करने के लिए स्थानीय बैकएंड से कनेक्ट करें।"
+                } else {
+                    "OptiScan बैकएंड से कनेक्ट नहीं हो सका। कृपया अपना नेटवर्क कनेक्शन जांचें।"
+                }
             } else {
-                "Could not connect to OptiScan backend. Please verify your connection or enable Offline Mock in Settings."
+                if (task == TaskTypes.DESCRIBE_IMAGE) {
+                    "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."
+                } else {
+                    "Could not connect to OptiScan backend. Please verify your connection."
+                }
             }
             Result.failure(Exception(connMsg, e))
         } catch (e: Exception) {

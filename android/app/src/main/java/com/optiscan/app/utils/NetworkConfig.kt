@@ -56,12 +56,29 @@ object NetworkConfig {
     }
 
     /**
-     * Validates that the URL is a hosted URL (not localhost or loopback).
+     * Validates that the URL is a legitimate hosted production URL (HTTPS, not loopback or local subnet).
      */
     fun isValidHostedUrl(url: String?): Boolean {
         if (!isValidUrl(url)) return false
         val trimmed = url!!.trim().lowercase()
-        return !trimmed.contains("127.0.0.1") && !trimmed.contains("localhost") && !trimmed.contains("10.0.2.2")
+        val isHttps = trimmed.startsWith("https://")
+        val isLocal = isLocalAddress(trimmed)
+        return isHttps && !isLocal
+    }
+
+    /**
+     * Checks if a URL targets a local development address (emulator, loopback, or private LAN IP).
+     */
+    fun isLocalAddress(url: String?): Boolean {
+        if (url.isNullOrBlank()) return false
+        val lower = url.lowercase().trim()
+        return lower.contains("10.0.2.2") ||
+                lower.contains("127.0.0.1") ||
+                lower.contains("localhost") ||
+                lower.contains("0.0.0.0") ||
+                lower.startsWith("http://192.168.") ||
+                lower.startsWith("http://10.") ||
+                lower.startsWith("http://172.")
     }
 
     /**
@@ -82,11 +99,13 @@ object NetworkConfig {
         }
 
     /**
-     * Returns true if the backend is configured for the active build variant.
+     * Returns true if the backend is properly configured for the active build variant.
+     * In Debug: any valid URL (local HTTP or hosted HTTPS) is permitted for testing.
+     * In Release: strictly requires a valid hosted HTTPS backend URL (no silent localhost or blank).
      */
     fun isConfigured(): Boolean {
         return if (isDebug) {
-            activeBaseUrl.isNotBlank()
+            isValidUrl(activeBaseUrl)
         } else {
             isValidHostedUrl(activeBaseUrl)
         }

@@ -14,6 +14,9 @@ import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.suspendCancellableCoroutine
+import android.graphics.Matrix
+import android.media.ExifInterface
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.coroutines.resume
@@ -100,21 +103,71 @@ class CameraManager {
     }
 
     /**
-     * Convert ImageProxy buffer to JPEG byte array.
+     * Convert ImageProxy buffer to JPEG byte array, rotating to upright based on imageInfo.rotationDegrees.
      */
     private fun imageProxyToJpegBytes(imageProxy: ImageProxy): ByteArray {
         val plane = imageProxy.planes[0]
         val buffer: ByteBuffer = plane.buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return bytes
+        val rawBytes = ByteArray(buffer.remaining())
+        buffer.get(rawBytes)
+
+        val rotationDegrees = imageProxy.imageInfo.rotationDegrees
+        if (rotationDegrees == 0) {
+            return rawBytes
+        }
+
+        return try {
+            val bitmap = BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+            if (bitmap != null) {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                val out = ByteArrayOutputStream()
+                rotatedBitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                if (rotatedBitmap != bitmap) {
+                    rotatedBitmap.recycle()
+                }
+                bitmap.recycle()
+                out.toByteArray()
+            } else {
+                rawBytes
+            }
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to apply rotation $rotationDegrees to captured image: ${e.message}")
+            rawBytes
+        }
     }
 
     /**
-     * Utility to decode byte array into Android Bitmap.
+     * Utility to decode byte array into Android Bitmap, respecting EXIF orientation if present.
      */
     fun bytesToBitmap(bytes: ByteArray): Bitmap? {
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: return null
+        return try {
+            val exif = ExifInterface(ByteArrayInputStream(bytes))
+            val orientation = exif.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+            val degrees = when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270
+                else -> 0
+            }
+            if (degrees != 0) {
+                val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
+                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                if (rotated != bitmap) {
+                    bitmap.recycle()
+                }
+                rotated
+            } else {
+                bitmap
+            }
+        } catch (e: Exception) {
+            Log.w(tag, "Failed to evaluate EXIF orientation: ${e.message}")
+            bitmap
+        }
     }
 
     /**

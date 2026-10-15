@@ -101,34 +101,25 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Action 1: Read Text
-            AccessibleActionCard(
-                title = strings.readTextTitle,
-                subtitle = strings.readTextSubtitle,
-                icon = Icons.Default.Description,
-                accentColor = ActionPrimaryBlue,
-                onClick = { onNavigateToCamera(ScanTask.READ_TEXT) }
-            )
-
-            // Action 2: Describe Surroundings
+            // Action 1: Describe Surroundings & Objects (Primary Vision Feature)
             AccessibleActionCard(
                 title = strings.describeSurroundingsTitle,
                 subtitle = strings.describeSurroundingsSubtitle,
                 icon = Icons.Default.Visibility,
-                accentColor = ActionSecondaryGreen,
+                accentColor = ActionPrimaryBlue,
                 onClick = { onNavigateToCamera(ScanTask.DESCRIBE_SURROUNDINGS) }
             )
 
-            // Action 3: Guided Task Assistance
+            // Action 2: Read Text (On-Device OCR)
             AccessibleActionCard(
-                title = strings.guidedTaskActionTitle,
-                subtitle = strings.guidedTaskActionSubtitle,
-                icon = Icons.Default.TaskAlt,
+                title = strings.readTextTitle,
+                subtitle = strings.readTextSubtitle,
+                icon = Icons.Default.Description,
                 accentColor = ActionSecondaryGreen,
-                onClick = onStartGuidedTask
+                onClick = { onNavigateToCamera(ScanTask.READ_TEXT) }
             )
 
-            // Action 4: Ask a Question
+            // Action 3: Ask a Question
             AccessibleActionCard(
                 title = strings.askQuestionTitle,
                 subtitle = strings.askQuestionSubtitle,
@@ -137,7 +128,16 @@ fun HomeScreen(
                 onClick = onNavigateToAskQuestion
             )
 
-            // Action 4: On-Device AI Voice Conversation (Offline Mode)
+            // Action 4: Guided Task Assistance (Secondary Step-by-Step Feature)
+            AccessibleActionCard(
+                title = strings.guidedTaskActionTitle,
+                subtitle = strings.guidedTaskActionSubtitle,
+                icon = Icons.Default.TaskAlt,
+                accentColor = ActionSecondaryGreen,
+                onClick = onStartGuidedTask
+            )
+
+            // Action 5: On-Device AI Voice Conversation (Offline Mode)
             if (onNavigateToOnDeviceConversation != null) {
                 AccessibleActionCard(
                     title = strings.onDeviceAiModeButton,

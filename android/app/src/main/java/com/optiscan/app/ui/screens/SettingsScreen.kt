@@ -296,6 +296,13 @@ fun SettingsScreen(
             var connectionStatus by remember { mutableStateOf<Boolean?>(null) }
             var isTestingConnection by remember { mutableStateOf(false) }
 
+            val isDebugVariant = NetworkConfig.isDebug
+            val isConfiguredStatus = if (isDebugVariant) {
+                NetworkConfig.isValidUrl(enteredUrl)
+            } else {
+                NetworkConfig.isValidHostedUrl(enteredUrl)
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -303,19 +310,84 @@ fun SettingsScreen(
                     .border(1.5.dp, BorderSubtle, RoundedCornerShape(16.dp))
                     .padding(18.dp)
             ) {
-                Text(
-                    text = strings.serverConfigTitle,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = TextWhite
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = strings.serverConfigTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = TextWhite,
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    // Environment status badge
+                    val badgeText = if (isDebugVariant) {
+                        strings.localDevModeBadge
+                    } else if (isConfiguredStatus) {
+                        "Hosted Backend"
+                    } else {
+                        strings.noHostedBackendConfiguredStatus
+                    }
+                    val badgeColor = if (isConfiguredStatus || isDebugVariant) ActionSecondaryGreen else MaterialTheme.colorScheme.error
+
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = badgeColor,
+                        modifier = Modifier
+                            .background(badgeColor.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
-                    text = strings.serverConfigSubtitle,
+                    text = if (!isDebugVariant && !isConfiguredStatus) {
+                        strings.noHostedBackendConfiguredExplanation
+                    } else {
+                        strings.serverConfigSubtitle
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = TextLightGrey
                 )
+
+                if (isDebugVariant) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Text(
+                        text = "Local Dev Presets:",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = ActionPrimaryBlue
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        OptiScanButton(
+                            text = "Emulator",
+                            onClick = { enteredUrl = NetworkConfig.EMULATOR_BASE_URL },
+                            variant = ButtonVariant.SURFACE,
+                            minHeight = 40,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OptiScanButton(
+                            text = "USB Reverse",
+                            onClick = { enteredUrl = NetworkConfig.PHYSICAL_DEVICE_REVERSE_URL },
+                            variant = ButtonVariant.SURFACE,
+                            minHeight = 40,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "For USB testing, run: adb reverse tcp:8000 tcp:8000\nFor Wi-Fi LAN testing, enter http://<computer-lan-ip>:8000/",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextLightGrey
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -323,7 +395,12 @@ fun SettingsScreen(
                     value = enteredUrl,
                     onValueChange = { enteredUrl = it },
                     label = { Text(strings.serverUrlLabel, color = TextLightGrey) },
-                    placeholder = { Text(strings.serverUrlHint, color = TextLightGrey) },
+                    placeholder = {
+                        Text(
+                            if (isDebugVariant) "http://10.0.2.2:8000/" else "https://api.yourdomain.com/",
+                            color = TextLightGrey
+                        )
+                    },
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = TextWhite,
@@ -338,6 +415,15 @@ fun SettingsScreen(
                             this.contentDescription = "${strings.serverUrlLabel}: $enteredUrl"
                         }
                 )
+
+                if (!isDebugVariant && enteredUrl.isNotBlank() && !NetworkConfig.isValidHostedUrl(enteredUrl)) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Release builds require an HTTPS hosted URL (not localhost or loopback).",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 

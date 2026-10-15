@@ -9,6 +9,8 @@ object MockData {
      * Fictional product label text for Screen F (Read Text Results).
      */
     val SAMPLE_PRODUCT_LABEL = """
+        [Simulated Label - Mock Mode]
+
         VALLEY PHARMACY
         EXTRA STRENGTH PAIN RELIEF
         Acetaminophen Tablets USP, 500 mg
@@ -33,6 +35,8 @@ object MockData {
      * Natural-language scene description for Screen G (Description Results).
      */
     val SAMPLE_SCENE_DESCRIPTION = """
+        [Simulated Description - Mock Mode]
+
         You are facing a well-lit indoor hallway with smooth hardwood flooring. Directly in front of you is a clear walking path leading toward an open doorway approximately 10 feet ahead.
 
         To your right side, there is a low wooden bench with a backpack resting on it. To your left side, the wall is clear with an accessible handrail along the perimeter. No trip hazards are detected on the ground.
@@ -43,7 +47,7 @@ object MockData {
      */
     fun answerQuestion(question: String, contextText: String? = null, language: String = "en"): String {
         val isHindi = language.equals("hi", ignoreCase = true)
-        val prefix = if (isHindi) "[ऑफलाइन मॉक] " else "[Offline Mock] "
+        val prefix = if (isHindi) "[अनुकरण उत्तर - मॉक मोड] " else "[Simulated Answer - Mock Mode] "
         val q = question.lowercase().trim()
         val rawAnswer = when {
             q.contains("expire") || q.contains("expiration") || q.contains("date") || q.contains("समाप्त") || q.contains("तारीख") -> {

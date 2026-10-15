@@ -366,7 +366,7 @@ class MainViewModel(
                     ScanTask.READ_TEXT -> {
                         speak(strings.processingReadingText)
 
-                        // Step 1: Run on-device ML Kit OCR first if bitmap is available
+                        // Step 1: Run on-device ML Kit OCR if bitmap is available
                         var onDeviceText: String? = null
                         val bmp = _capturedBitmap.value
                         if (bmp != null) {
@@ -381,6 +381,31 @@ class MainViewModel(
                             } catch (e: Exception) {
                                 Log.w(tag, "On-device OCR check exception", e)
                             }
+                        }
+
+                        // Independent On-Device Mode: If backend is not configured, complete directly with ML Kit OCR
+                        if (!repository.isConfigured() && !isMock) {
+                            _isAnalyzing.value = false
+                            val displayText = onDeviceText ?: if (lang == AppLanguage.HINDI) {
+                                "छवि में कोई छपा हुआ टेक्स्ट नहीं मिला।"
+                            } else {
+                                "No printed text detected in the image."
+                            }
+                            navigateTo(
+                                Screen.ReadTextResult(
+                                    text = displayText,
+                                    shouldRecapture = false,
+                                    recaptureReason = strings.ocrWorksOfflineNotice,
+                                    isLiveResult = false
+                                )
+                            )
+                            val speechNotice = if (onDeviceText != null) {
+                                "${strings.ocrWorksOfflineNotice} $displayText"
+                            } else {
+                                displayText
+                            }
+                            speak(speechNotice)
+                            return@launch
                         }
 
                         // Step 2: Query repository with image and optional on-device OCR text in selected language
@@ -446,6 +471,15 @@ class MainViewModel(
                     }
 
                     ScanTask.DESCRIBE_SURROUNDINGS -> {
+                        // Unconfigured backend check for live scene/object analysis
+                        if (!repository.isConfigured() && !isMock) {
+                            _isAnalyzing.value = false
+                            val unavailableMsg = strings.noBackendConnectedObjectDescription
+                            _analysisError.value = unavailableMsg
+                            speak(unavailableMsg)
+                            return@launch
+                        }
+
                         speak(strings.processingDescribing)
                         val result = repository.analyzeImage(
                             imageBytes = bytesToAnalyze ?: ByteArray(0),
@@ -483,17 +517,25 @@ class MainViewModel(
                             }
                         }.onFailure { ex ->
                             _isAnalyzing.value = false
-                            val errorMsg = ex.message ?: if (lang == AppLanguage.HINDI) {
-                                "आस-पास के वातावरण का विश्लेषण करने में विफलता।"
+                            val errorMsg = if (ex is java.io.IOException || ex.message?.contains("connect", ignoreCase = true) == true || ex.message?.contains("AI object description is unavailable", ignoreCase = true) == true) {
+                                strings.noBackendConnectedObjectDescription
                             } else {
-                                "Failed to analyze scene surroundings."
+                                ex.message ?: strings.noBackendConnectedObjectDescription
                             }
                             _analysisError.value = errorMsg
-                            speak("${strings.errorPrefix} $errorMsg. ${strings.retry}")
+                            speak(errorMsg)
                         }
                     }
 
                     ScanTask.GUIDED_TASK -> {
+                        if (!repository.isConfigured() && !isMock) {
+                            _isAnalyzing.value = false
+                            val unavailableMsg = strings.noBackendConnectedObjectDescription
+                            _analysisError.value = unavailableMsg
+                            speak(unavailableMsg)
+                            return@launch
+                        }
+
                         val currentSession = _guidedTaskSession.value ?: GuidedTaskSession(goal = "make tea")
                         speak(strings.processingGuidedTask)
 
@@ -604,6 +646,13 @@ class MainViewModel(
             val answer = MockData.answerQuestion(query, contextContent, lang.code)
             onAnswerReceived(answer)
             speak(answer)
+            return
+        }
+
+        if (!repository.isConfigured()) {
+            val unavailableMsg = strings.noBackendConnectedObjectDescription
+            onAnswerReceived(unavailableMsg)
+            speak(unavailableMsg)
             return
         }
 

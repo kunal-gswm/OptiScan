@@ -126,6 +126,8 @@ data class AppStrings(
     val guidedTaskActionSubtitle: String,
     val guidedTaskSpokenIntro: String,
     val nextStep: String,
+    val scanWorkspaceForNextStep: String,
+    val scanWorkspaceNextStepContentDesc: String,
     val repeatStep: String,
     val scanAgain: String,
     val stopTask: String,
@@ -172,6 +174,14 @@ data class AppStrings(
     val cloudInternetRequiredNotice: String,
     val noImageForQuestionNotice: String,
     val serverNotConfiguredMessage: String,
+    val noBackendConnectedObjectDescription: String,
+    val noHostedBackendConfiguredStatus: String,
+    val noHostedBackendConfiguredExplanation: String,
+    val localDevModeBadge: String,
+    val localDevEmulatorHint: String,
+    val localDevUsbHint: String,
+    val localDevLanHint: String,
+    val ocrWorksOfflineNotice: String,
     val aboutTitle: String,
     val aboutDescription: String,
 
@@ -214,7 +224,7 @@ data class AppStrings(
 
             // Home
             homeSubtitle = "Select an action below",
-            homeSpokenAnnouncement = "OptiScan Home. Select Read Text, Describe Surroundings, or Ask a Question.",
+            homeSpokenAnnouncement = "OptiScan Home. Select Describe Surroundings, Read Text, or Ask a Question.",
             readTextTitle = "Read Text",
             readTextSubtitle = "Read labels, documents, medicine packaging, and signs.",
             describeSurroundingsTitle = "Describe Surroundings",
@@ -315,6 +325,8 @@ data class AppStrings(
             guidedTaskActionSubtitle = "Step-by-step guidance for tasks like making tea or coffee",
             guidedTaskSpokenIntro = "Guided Task Mode. Aim camera at your workspace and tap Scan to begin, or say what task you want help with.",
             nextStep = "Next Step",
+            scanWorkspaceForNextStep = "Scan Workspace for Next Step",
+            scanWorkspaceNextStepContentDesc = "Scan workspace to verify physical state and get next instruction",
             repeatStep = "Repeat Step",
             scanAgain = "Scan Again",
             stopTask = "Stop Task",
@@ -361,17 +373,25 @@ data class AppStrings(
             cloudInternetRequiredNotice = "Internet connection is required for visual scene descriptions.",
             noImageForQuestionNotice = "No image available to answer questions about. Please capture a photo first.",
             serverNotConfiguredMessage = "Hosted backend URL is not configured. Please enter a valid server URL in Settings or enable Offline Mock Mode.",
+            noBackendConnectedObjectDescription = "AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis.",
+            noHostedBackendConfiguredStatus = "No hosted backend configured",
+            noHostedBackendConfiguredExplanation = "Live cloud AI analysis requires a configured backend server. Connect to a local backend for testing or configure a hosted HTTPS backend in Settings.",
+            localDevModeBadge = "Local Development Mode",
+            localDevEmulatorHint = "Android Emulator: http://10.0.2.2:8000/",
+            localDevUsbHint = "Physical Device via USB: adb reverse tcp:8000 tcp:8000 (http://127.0.0.1:8000/)",
+            localDevLanHint = "Physical Device via Wi-Fi: http://<YOUR_COMPUTER_LAN_IP>:8000/",
+            ocrWorksOfflineNotice = "On-device OCR works offline. No backend required to read text.",
             aboutTitle = "About OptiScan",
             aboutDescription = "Version 1.0.0 (Hackathon MVP)\nDesigned for blind and low-vision accessibility. Supports TalkBack screen reading, large touch targets, and high-contrast color standards.",
 
-            // On-Device AI
-            onDeviceAiSettingsTitle = "On-Device AI Mode (Qwen2-VL)",
-            onDeviceAiSettingsSubtitle = "Use a local Qwen2-VL vision model on your device for fully private, offline image analysis and voice conversation. Requires ~1.8 GB storage.",
+            // On-Device AI (Prototype / Simulated Demo)
+            onDeviceAiSettingsTitle = "[Prototype] On-Device AI Mode (Qwen2-VL)",
+            onDeviceAiSettingsSubtitle = "Simulated offline prototype. Full local inference requires compiling native llama.cpp libraries (arm64-v8a) and downloading ~1.8 GB model weights.",
             onDeviceAiDiagnosticsTitle = "Show AI Diagnostics",
             onDeviceAiDiagnosticsSubtitle = "Display model load time and inference time for developer benchmarking.",
-            onDeviceAiModeButton = "On-Device AI Conversation",
-            onDeviceAiModeSubtitle = "Private • Offline • Qwen2-VL",
-            onDeviceAiPrivacyBadge = "🔒 On-device: your images never leave this phone"
+            onDeviceAiModeButton = "[Prototype] On-Device AI Voice",
+            onDeviceAiModeSubtitle = "Simulated demo • Offline voice prototype",
+            onDeviceAiPrivacyBadge = "🔒 On-device prototype: your images never leave this phone"
         )
 
         val Hindi = AppStrings(
@@ -391,7 +411,7 @@ data class AppStrings(
 
             // Home
             homeSubtitle = "नीचे दिया गया कोई विकल्प चुनें",
-            homeSpokenAnnouncement = "ऑप्टीस्कैन होम। टेक्स्ट पढ़ें, आस-पास का विवरण, या प्रश्न पूछें चुनें।",
+            homeSpokenAnnouncement = "ऑप्टीस्कैन होम। आस-पास का विवरण, टेक्स्ट पढ़ें, या प्रश्न पूछें चुनें।",
             readTextTitle = "टेक्स्ट पढ़ें",
             readTextSubtitle = "लेबल, दस्तावेज़, दवा के पैकेट और बोर्ड पढ़ें।",
             describeSurroundingsTitle = "आस-पास का विवरण",
@@ -492,6 +512,8 @@ data class AppStrings(
             guidedTaskActionSubtitle = "चाय या कॉफी बनाने जैसे कार्यों के लिए चरणबद्ध मार्गदर्शन",
             guidedTaskSpokenIntro = "गाइडेड टास्क मोड। कैमरे को अपने कार्यक्षेत्र पर रखें और शुरू करने के लिए स्कैन करें, या बोलें कि आप किस कार्य में मदद चाहते हैं।",
             nextStep = "अगला कदम",
+            scanWorkspaceForNextStep = "अगले चरण के लिए कार्यक्षेत्र स्कैन करें",
+            scanWorkspaceNextStepContentDesc = "भौतिक स्थिति सत्यापित करने और अगला निर्देश प्राप्त करने के लिए कार्यक्षेत्र स्कैन करें",
             repeatStep = "कदम दोहराएं",
             scanAgain = "फिर से स्कैन करें",
             stopTask = "टास्क रोकें",
@@ -538,17 +560,25 @@ data class AppStrings(
             cloudInternetRequiredNotice = "दृश्य विवरण के लिए इंटरनेट कनेक्शन आवश्यक है।",
             noImageForQuestionNotice = "प्रश्न का उत्तर देने के लिए कोई फोटो उपलब्ध नहीं है। कृपया पहले फोटो खींचें।",
             serverNotConfiguredMessage = "क्लाउड बैकएंड सर्वर कॉन्फ़िगर नहीं है। कृपया सेटिंग्स में सर्वर URL दर्ज करें या ऑफलाइन मॉक मोड सक्षम करें।",
+            noBackendConnectedObjectDescription = "AI वस्तु विवरण अनुपलब्ध है क्योंकि कोई बैकएंड कनेक्ट नहीं है। लाइव AI विश्लेषण का उपयोग करने के लिए स्थानीय बैकएंड से कनेक्ट करें।",
+            noHostedBackendConfiguredStatus = "कोई होस्टेड बैकएंड कॉन्फ़िगर नहीं है",
+            noHostedBackendConfiguredExplanation = "लाइव क्लाउड AI विश्लेषण के लिए एक कॉन्फ़िगर किए गए बैकएंड सर्वर की आवश्यकता है। परीक्षण के लिए स्थानीय बैकएंड से कनेक्ट करें या सेटिंग्स में होस्टेड HTTPS बैकएंड कॉन्फ़िगर करें।",
+            localDevModeBadge = "स्थानीय विकास मोड",
+            localDevEmulatorHint = "एंड्रॉइड एमुलेटर: http://10.0.2.2:8000/",
+            localDevUsbHint = "USB द्वारा फिजिकल डिवाइस: adb reverse tcp:8000 tcp:8000 (http://127.0.0.1:8000/)",
+            localDevLanHint = "वाई-फ़ाई द्वारा फिजिकल डिवाइस: http://<कंप्यूटर_LAN_IP>:8000/",
+            ocrWorksOfflineNotice = "डिवाइस पर OCR ऑफलाइन काम करता है। टेक्स्ट पढ़ने के लिए बैकएंड की आवश्यकता नहीं है।",
             aboutTitle = "ऑप्टीस्कैन के बारे में",
             aboutDescription = "संस्करण 1.0.0 (हैकथॉन MVP)\nदृष्टिबाधित और कम दृष्टि वाले उपयोगकर्ताओं के लिए डिज़ाइन किया गया।",
 
-            // On-Device AI
-            onDeviceAiSettingsTitle = "ऑन-डिवाइस AI मोड (Qwen2-VL)",
-            onDeviceAiSettingsSubtitle = "पूरी तरह निजी और ऑफलाइन छवि विश्लेषण के लिए स्थानीय Qwen2-VL मॉडल उपयोग करें। ~1.8 GB संग्रहण आवश्यक।",
+            // On-Device AI (Prototype / Simulated Demo)
+            onDeviceAiSettingsTitle = "[प्रोटोटाइप] ऑन-डिवाइस AI मोड (Qwen2-VL)",
+            onDeviceAiSettingsSubtitle = "सिम्युलेटेड ऑफलाइन प्रोटोटाइप। पूर्ण ऑन-डिवाइस अनुमान के लिए llama.cpp नेटिव लाइब्रेरी (arm64-v8a) और ~1.8 GB मॉडल डाउनलोड करने की आवश्यकता है।",
             onDeviceAiDiagnosticsTitle = "AI डायग्नोस्टिक्स दिखाएं",
             onDeviceAiDiagnosticsSubtitle = "डेवलपर बेंचमार्किंग के लिए मॉडल लोड समय और अनुमान समय प्रदर्शित करें।",
-            onDeviceAiModeButton = "ऑन-डिवाइस AI बातचीत",
-            onDeviceAiModeSubtitle = "निजी • ऑफलाइन • Qwen2-VL",
-            onDeviceAiPrivacyBadge = "🔒 ऑन-डिवाइस: आपकी छवियां इस फोन से बाहर नहीं जातीं"
+            onDeviceAiModeButton = "[प्रोटोटाइप] ऑन-डिवाइस AI बातचीत",
+            onDeviceAiModeSubtitle = "सिम्युलेटेड डेमो • ऑफलाइन आवाज़ प्रोटोटाइप",
+            onDeviceAiPrivacyBadge = "🔒 ऑन-डिवाइस प्रोटोटाइप: आपकी छवियां इस फोन से बाहर नहीं जातीं"
         )
 
         fun get(language: AppLanguage): AppStrings = when (language) {

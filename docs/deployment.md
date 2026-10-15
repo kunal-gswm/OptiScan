@@ -183,10 +183,13 @@ For hosting on an Ubuntu/Debian VPS with automated Let's Encrypt SSL certificate
      }
      ```
 
-### Cleartext Traffic & Security Rules
+### Cleartext Traffic & Scoped Security Rules
 
-- **Debug Builds**: Permit cleartext `http://` traffic for local emulator testing (`http://10.0.2.2:8000/`) and USB ADB reverse tethering.
-- **Release Builds**: Prohibit unencrypted loopback traffic. If no server URL is provided, the app alerts the user cleanly to configure the server or enable Offline Mock Mode, avoiding silent crashes.
+- **Debug Builds**: Permit cleartext `http://` traffic scoped via `src/debug/res/xml/network_security_config.xml` strictly for local development testing (`http://10.0.2.2:8000/`, USB reverse `http://127.0.0.1:8000/`, and Wi-Fi LAN HTTP).
+- **Release Builds**: Strictly enforce secure HTTPS traffic (`src/main/res/xml/network_security_config.xml` with `cleartextTrafficPermitted="false"`). Loopback and insecure HTTP endpoints are blocked.
+- **Unconfigured Backend Handling**: If no hosted URL is configured in Release, the Settings screen displays *"No hosted backend configured"*. When a user attempts visual scene description without a backend, the app cleanly announces:
+  > *"AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."*
+- **On-Device OCR Independence**: Google ML Kit OCR functions 100% on-device without requiring any network connection or configured backend.
 
 ---
 
@@ -194,10 +197,11 @@ For hosting on an Ubuntu/Debian VPS with automated Let's Encrypt SSL certificate
 
 OptiScan provides graceful degradation when network connectivity is lost:
 
-| Feature | Online (Cloud Backend) | Offline (Device Only) |
+| Feature | Online (Connected Backend) | Offline / Unconfigured Backend |
 |---|---|---|
-| **Text Reading (Read Text)** | High-accuracy scene text with AI context | On-device Google ML Kit OCR; reads text aloud via TTS |
-| **Scene Description** | Gemini 2.5 Flash scene analysis | Alerts user that cloud connection is needed; guides to retry |
-| **Follow-up Questions** | Interactive multi-turn Q&A | Alerts user that cloud connection is required |
+| **Text Reading (Read Text)** | High-accuracy scene text with AI context | **100% On-Device:** Google ML Kit OCR; reads text aloud via TTS independently |
+| **Object & Scene Description** | Gemini 2.5 Flash spatial scene analysis | Clean honest announcement: *"AI object description is unavailable because no backend is connected. Connect to a local backend to use live AI analysis."* |
+| **Follow-up Questions** | Interactive multi-turn voice and text Q&A | Alerts user that connected backend is required |
+| **Guided Task Mode** | Step-by-step assistance for physical tasks | Requires connected backend or Offline Mock Mode |
 | **Voice Navigation & TTS** | Full English & Hindi TTS | On-device Android TextToSpeech engine |
-| **Mock Demo Mode** | N/A | Full offline simulation clearly marked with `[Offline Demo]` badge |
+| **Offline Mock Mode** | N/A | Full offline simulation clearly marked with `[Simulated Description - Mock Mode]`, `[Simulated Label - Mock Mode]`, etc. |
